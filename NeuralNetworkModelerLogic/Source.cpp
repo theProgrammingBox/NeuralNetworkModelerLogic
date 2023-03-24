@@ -1,99 +1,21 @@
-#include "iostream"
-#include "vector"
+#include "Matrix2D.h"
+#include "Matrix3D.h"
+#include "Matrix4D.h"
 
-class Matrix
-{
-public:
-	uint32_t rows;
-	uint32_t cols;
-	uint32_t depth;
-	uint32_t size;
-	float* arr;
-};
-
-class OperationComponent
-{
-public:
-	uint8_t inputCount;
-	uint8_t outputCount;
-	std::vector<Matrix*> inputMatrices;
-	std::vector<Matrix*> outputMatrices;
-	
-	OperationComponent() = default;
-	virtual ~OperationComponent() = default;
-
-	virtual void SetInputMatrix(uint8_t idx, Matrix* matrix) = 0;
-	virtual void SetOutputMatrix(uint8_t idx, Matrix* matrix) = 0;
-};
-
-class MatMulComponent : public OperationComponent
-{
-public:
-	MatMulComponent()
-	{
-		inputCount = 2;
-		outputCount = 1;
-		inputMatrices.resize(inputCount);
-		outputMatrices.resize(outputCount);
-	}
-	virtual ~MatMulComponent() = default;
-
-	virtual void SetInputMatrix(uint8_t idx, Matrix* matrix) override
-	{
-		if (idx < inputCount)
-		{
-			inputMatrices[idx] = matrix;
-		}
-	}
-
-	virtual void SetOutputMatrix(uint8_t idx, Matrix* matrix) override
-	{
-		if (idx < outputCount)
-		{
-			outputMatrices[idx] = matrix;
-		}
-	}
-};
-
-class Conv3DComponent : public OperationComponent
-{
-public:
-	Conv3DComponent()
-	{
-		inputCount = 2;
-		outputCount = 1;
-		inputMatrices.resize(inputCount);
-		outputMatrices.resize(outputCount);
-	}
-	virtual ~Conv3DComponent() = default;
-
-	virtual void SetInputMatrix(uint8_t idx, Matrix* matrix) override
-	{
-		if (idx < inputCount)
-		{
-			inputMatrices[idx] = matrix;
-		}
-	}
-
-	virtual void SetOutputMatrix(uint8_t idx, Matrix* matrix) override
-	{
-		if (idx < outputCount)
-		{
-			outputMatrices[idx] = matrix;
-		}
-	}
-};
+#include "MatMulComponent.h"
+#include "Conv3DComponent.h"
 
 int main()
 {
 	std::vector<Matrix*> matrices;
-	matrices.push_back(new Matrix());
-	matrices.push_back(new Matrix());
-	matrices.push_back(new Matrix());
-	matrices.push_back(new Matrix());
-	matrices.push_back(new Matrix());
-	
 	std::vector<OperationComponent*> components;
+	
+	matrices.push_back(new Matrix3D(16, 16, 1));
+	matrices.push_back(new Matrix4D(4, 4, 1, 4));
+	matrices.push_back(new Matrix3D(4, 4, 4));
+	matrices.push_back(new Matrix2D(16, 4));
+	matrices.push_back(new Matrix2D(16, 4));
+	
 	components.push_back(new MatMulComponent());
 	components.push_back(new Conv3DComponent());
 

@@ -4,6 +4,10 @@
 
 #include "MatMulComponent.h"
 #include "Conv3DComponent.h"
+#include "Transpose.h"
+#include "ToMatrix2D.h"
+#include "ToMatrix3D.h"
+#include "ToMatrix4D.h"
 
 int main()
 {
@@ -16,8 +20,9 @@ int main()
 	matrices.push_back(new Matrix2D(16, 4));
 	matrices.push_back(new Matrix2D(16, 4));
 	
-	components.push_back(new MatMulComponent());
 	components.push_back(new Conv3DComponent());
+	components.push_back(new ToMatrix2D());
+	components.push_back(new MatMulComponent());
 
 	components[0]->SetInputMatrix(0, matrices[0]);
 	components[0]->SetInputMatrix(1, matrices[1]);
@@ -26,4 +31,6 @@ int main()
 	components[1]->SetInputMatrix(0, matrices[2]);
 	components[1]->SetInputMatrix(1, matrices[3]);
 	components[1]->SetOutputMatrix(0, matrices[4]);
+
+	return 0;
 }

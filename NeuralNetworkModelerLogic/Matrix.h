@@ -4,16 +4,9 @@
 class Matrix
 {
 public:
-	virtual ~Matrix() = default;
-
-	uint32_t getSize() const
+	virtual ~Matrix()
 	{
-		return size;
-	}
-
-	float* getArr() const
-	{
-		return arr;
+		delete[] arr;
 	}
 
 	virtual void setSize() = 0;

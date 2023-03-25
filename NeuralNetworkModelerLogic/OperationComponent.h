@@ -4,7 +4,6 @@
 class OperationComponent
 {
 public:
-	OperationComponent() = default;
 	virtual ~OperationComponent() = default;
 
 	virtual void SetInputMatrix(uint8_t idx, Matrix* matrix) = 0;

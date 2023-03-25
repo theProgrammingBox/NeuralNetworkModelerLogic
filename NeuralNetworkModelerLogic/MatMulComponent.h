@@ -12,12 +12,6 @@ public:
 		outputMatrices = new Matrix * [outputCount];
 	}
 
-	virtual ~MatMulComponent()
-	{
-		delete[] inputMatrices;
-		delete[] outputMatrices;
-	}
-
 	virtual void SetInputMatrix(uint8_t idx, Matrix* matrix) override
 	{
 		if (idx < inputCount)

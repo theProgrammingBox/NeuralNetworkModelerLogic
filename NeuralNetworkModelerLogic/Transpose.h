@@ -1,12 +1,12 @@
 #pragma once
 #include "OperationComponent.h"
 
-class Conv3DComponent : public OperationComponent
+class Transpose : public OperationComponent
 {
 public:
-	Conv3DComponent()
+	Transpose()
 	{
-		inputCount = 2;
+		inputCount = 1;
 		outputCount = 1;
 		inputMatrices = new Matrix * [inputCount];
 		outputMatrices = new Matrix * [outputCount];

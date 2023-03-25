@@ -1,12 +1,12 @@
 #pragma once
 #include "OperationComponent.h"
 
-class Conv3DComponent : public OperationComponent
+class ToMatrix3D : public OperationComponent
 {
 public:
-	Conv3DComponent()
+	ToMatrix3D()
 	{
-		inputCount = 2;
+		inputCount = 1;
 		outputCount = 1;
 		inputMatrices = new Matrix * [inputCount];
 		outputMatrices = new Matrix * [outputCount];

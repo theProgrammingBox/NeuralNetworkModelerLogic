@@ -2,14 +2,29 @@
 #include <vector>
 #include <memory>
 
-class StarterMatrix
+class Matrix
 {
 public:
 };
 
-class Matrix
+class inputMatrixNode
 {
 public:
+	std::shared_ptr<Matrix> matrix;
+
+	// ability to create matrixes defined by user or predefined matrixes
+};
+
+class outputMatrixNode
+{
+public:
+	std::shared_ptr<Matrix> matrix;
+
+	// can only connect to predefined matrixes
+	void AssignMatrix(std::shared_ptr<Matrix> matrix)
+	{
+		this->matrix = matrix;
+	}
 };
 
 class Layer
@@ -75,19 +90,19 @@ public:
 class NetworkModeler
 {
 public:
-	std::vector<std::shared_ptr<StarterMatrix>> starterMatrixes;
+	std::vector<std::shared_ptr<inputMatrixNode>> inputMatrixNodes;
 	std::vector<std::shared_ptr<Matrix>> matrixes;
     std::vector<std::shared_ptr<Layer>> layers;
-	std::vector<std::shared_ptr<StarterMatrix>> endingMatrixes;
+	std::vector<std::shared_ptr<outputMatrixNode>> outputMatrixNodes;
 
-	void AddStarterMatrix()
+	void AddInputMatrixNode()
 	{
-		starterMatrixes.push_back(std::make_shared<StarterMatrix>());
+		inputMatrixNodes.push_back(std::make_shared<inputMatrixNode>());
 	}
 
-	void AddEndingMatrix()
+	void AddOutputMatrixNode()
 	{
-		endingMatrixes.push_back(std::make_shared<StarterMatrix>());
+		outputMatrixNodes.push_back(std::make_shared<outputMatrixNode>());
 	}
 
 	template<typename T>
@@ -101,18 +116,19 @@ int main()
 {
     NetworkModeler modeler;
 	
-    modeler.AddStarterMatrix();
-	modeler.AddStarterMatrix();
-	modeler.AddEndingMatrix();
+    modeler.AddInputMatrixNode();
+	modeler.AddInputMatrixNode();
 	
     modeler.AddLayer<MatMulLayer>();
     modeler.AddLayer<MatAddLayer>();
 	
-	modeler.layers[0]->AssignInputMatrix(0, modeler.starterMatrixes[0]);
-	modeler.layers[1]->AssignInputMatrix(0, modeler.starterMatrixes[1]);
+	modeler.layers[0]->AssignInputMatrix(0, modeler.inputMatrixNodes[0]->matrix);
+	modeler.layers[1]->AssignInputMatrix(0, modeler.inputMatrixNodes[1]->matrix);
 	modeler.layers[1]->AssignInputMatrix(1, modeler.layers[0]->GetOutputMatrix(0));
+	
+	modeler.AddOutputMatrixNode();
 
-	modeler.endingMatrixes[0]->AssignInputMatrix(modeler.layers[1]->GetOutputMatrix(0));
+	modeler.outputMatrixNodes[0]->AssignMatrix(modeler.layers[1]->GetOutputMatrix(0));
 
     return 0;
 }

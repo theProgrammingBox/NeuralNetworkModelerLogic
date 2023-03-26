@@ -13,6 +13,10 @@ TODO
 class Matrix
 {
 public:
+	// unique id, like color, implement this later
+	// name, like "input matrix", implement this later
+	// dimensions?, work out the different types and what it means for the compiler
+	//std::unique_ptr<float[]> data;	// not nessicary, if we are just using the matrix for visualization
 };
 
 class inputMatrixNode
@@ -121,7 +125,14 @@ public:
 
 	void Compile()
 	{
-		// compile layers
+		// for matmul, if there is no weight matrix, ask the user if they want to create one
+		// suggest a name for the matrix, dimensions, etc
+		// same for output. all layers should generate an output matrix
+		// matadd generated a bias matrix, so suggest a name with bias in it.
+
+		// ask user to create or connect matrix to inputMatrixNode if there is no matrix in a created node
+		// for outputMatrixNode, just ignore it if there is no matrix
+		// maybe add a clean up function to remove all the matrixes that are not connected to anything
 	}
 };
 

@@ -1,24 +1,70 @@
 #include <iostream>
 #include <vector>
 #include <memory>
+#include <list>
+#include <deque>
+
+struct Param {
+    std::shared_ptr<int> value;
+    std::list<std::shared_ptr<int>>::iterator param_it;
+};
 
 class Matrix {
 public:
-    Matrix(std::shared_ptr<int> rows, std::shared_ptr<int> columns)
+    Matrix(Param& rows, Param& columns)
         : numRows(rows), numColumns(columns) {}
 
-    std::shared_ptr<int> numRows;
-    std::shared_ptr<int> numColumns;
+    Param& numRows;
+    Param& numColumns;
 };
+
+std::vector<Matrix> initialize_matrices(int numMatrices, std::list<std::shared_ptr<int>>& parameters, std::deque<Param>& param_vec) {
+    std::vector<Matrix> matrices;
+
+    for (int i = 0; i < numMatrices; i++) {
+        parameters.push_back(std::make_shared<int>(0));
+        auto numRowsIt = std::prev(parameters.end());
+        parameters.push_back(std::make_shared<int>(0));
+        auto numColumnsIt = std::prev(parameters.end());
+
+        param_vec.push_back({ *numRowsIt, numRowsIt });
+        param_vec.push_back({ *numColumnsIt, numColumnsIt });
+
+        matrices.push_back(Matrix(param_vec[param_vec.size() - 2], param_vec[param_vec.size() - 1]));
+    }
+
+    return matrices;
+}
 
 class OperationComponent {
 public:
-    OperationComponent(std::shared_ptr<Matrix> left, std::shared_ptr<Matrix> right)
-        : leftMatrix(left), rightMatrix(right) {}
+    OperationComponent(Matrix& left, Matrix& right, std::list<std::shared_ptr<int>>& parameters)
+        : leftMatrix(left), rightMatrix(right) {
+        // Merge/share the parameter pointers between the left and right matrices
+        rightMatrix.numRows.value = leftMatrix.numColumns.value;
+        rightMatrix.numRows.param_it = leftMatrix.numColumns.param_it;
 
-    std::shared_ptr<Matrix> leftMatrix;
-    std::shared_ptr<Matrix> rightMatrix;
+        // Remove the extra parameter from the parameters list
+        parameters.erase(rightMatrix.numColumns.param_it);
+    }
+
+    Matrix& leftMatrix;
+    Matrix& rightMatrix;
 };
+
+std::vector<OperationComponent> initialize_operations(int numOperations, std::vector<Matrix>& matrices, std::list<std::shared_ptr<int>>& parameters) {
+    std::vector<OperationComponent> operations;
+
+    for (int i = 0; i < numOperations; i++) {
+        int leftMatrixIndex, rightMatrixIndex;
+        std::cout << "Enter the indices of the matrices for operation " << i + 1 << ": ";
+        std::cin >> leftMatrixIndex >> rightMatrixIndex;
+
+        operations.push_back(OperationComponent(matrices[leftMatrixIndex], matrices[rightMatrixIndex], parameters));
+    }
+
+    return operations;
+}
 
 int main() {
     int numMatrices, numOperations;
@@ -27,43 +73,28 @@ int main() {
     std::cout << "Enter the number of operation components: ";
     std::cin >> numOperations;
 
-    std::vector<std::shared_ptr<int>> parameters;
-    std::vector<std::shared_ptr<Matrix>> matrices;
+    std::list<std::shared_ptr<int>> parameters;
+    std::deque<Param> param_vec;
 
-    for (int i = 0; i < numMatrices; i++) {
-        parameters.push_back(std::make_shared<int>(0));
-        parameters.push_back(std::make_shared<int>(0));
-        matrices.push_back(std::make_shared<Matrix>(parameters[2 * i], parameters[2 * i + 1]));
-    }
+    auto matrices = initialize_matrices(numMatrices, parameters, param_vec);
+    auto operations = initialize_operations(numOperations, matrices, parameters);
 
-    std::vector<OperationComponent> operations;
-    for (int i = 0; i < numOperations; i++) {
-        int leftMatrixIndex, rightMatrixIndex;
-        std::cout << "Enter the indices of the matrices for operation " << i + 1 << ": ";
-        std::cin >> leftMatrixIndex >> rightMatrixIndex;
-
-        // Merge/share the parameter pointers between the left and right matrices
-        matrices[rightMatrixIndex]->numRows = matrices[leftMatrixIndex]->numColumns;
-        operations.push_back(OperationComponent(matrices[leftMatrixIndex], matrices[rightMatrixIndex]));
-    }
-
-    // Remove duplicate shared_ptrs from the parameters vector
-    std::vector<std::shared_ptr<int>> uniqueParameters;
-    for (const auto& param : parameters) {
-        if (std::find(uniqueParameters.begin(), uniqueParameters.end(), param) == uniqueParameters.end()) {
-            uniqueParameters.push_back(param);
-        }
-    }
-
-    int numUniqueDimensions = uniqueParameters.size();
+    int numUniqueDimensions = parameters.size();
     std::cout << "Number of unique dimension parameters: " << numUniqueDimensions << std::endl;
 
+    auto paramIt = parameters.begin();
     for (int i = 0; i < numUniqueDimensions; i++) {
         int dimensionSize;
         std::cout << "Enter the size for dimension parameter " << i + 1 << ": ";
         std::cin >> dimensionSize;
-        *uniqueParameters[i] = dimensionSize;
+        **paramIt = dimensionSize;
+        ++paramIt;
     }
 
-    return 0;
+    std::cout << "Matrix dimensions:" << std::endl;
+    for (int i = 0; i < numMatrices; i++) {
+		std::cout << "Matrix " << i + 1 << ": " << *matrices[i].numRows.value << " x " << *matrices[i].numColumns.value << std::endl;
+	}
+
+	return 0;
 }

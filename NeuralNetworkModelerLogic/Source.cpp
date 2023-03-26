@@ -4,8 +4,10 @@
 
 /*
 TODO
-0. rework MatrixNode. Might just use matrix or maybe just use MatrixNode.
-1. work out the logic of compile. what should the comiler create and ask for.
+0. work out the logic of compile. what should the comiler create and ask for.
+1. rework MatrixNode. Might just use matrix or maybe just use MatrixNode.
+(the problem is compiler needs a direction to go. I can't just use the matrixes as they are.)
+(or not, idk, work out compiler)
 */
 
 class Matrix

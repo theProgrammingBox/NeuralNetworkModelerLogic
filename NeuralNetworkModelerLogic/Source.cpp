@@ -12,6 +12,10 @@ TODO
 1. rework MatrixNode. Might just use matrix or maybe just use MatrixNode.
 (the problem is compiler needs a direction to go. I can't just use the matrixes as they are.)
 (or not, idk, work out compiler)
+1. when adding matrixes by compiler, add/render the matrix so it renders in the front
+2. work out zooming and panning. draw text might be a problem
+2. work out a node editing tab/sidebar. like a node editor
+2. when hovering over a matrix, highlight all of the connections it represents
 */
 
 class Matrix

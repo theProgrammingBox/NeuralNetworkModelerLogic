@@ -2,6 +2,12 @@
 #include <vector>
 #include <memory>
 
+/*
+TODO
+0. rework MatrixNode. Might just use matrix or maybe just use MatrixNode.
+1. work out the logic of compile. what should the comiler create and ask for.
+*/
+
 class Matrix
 {
 public:
@@ -110,6 +116,11 @@ public:
 	{
 		layers.push_back(std::make_shared<T>());
 	}
+
+	void Compile()
+	{
+		// compile layers
+	}
 };
 
 int main()
@@ -129,6 +140,8 @@ int main()
 	modeler.AddOutputMatrixNode();
 
 	modeler.outputMatrixNodes[0]->AssignMatrix(modeler.layers[1]->GetOutputMatrix(0));
+
+	modeler.Compile();
 
     return 0;
 }

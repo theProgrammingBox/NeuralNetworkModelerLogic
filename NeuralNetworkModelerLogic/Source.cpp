@@ -4,7 +4,11 @@
 
 /*
 TODO
+0. decide on how the output matrixes of layers work.
+(maybe have everything in terms of names and ids instead of a actual data)
+(like this layer connect to that matrix. that matrix is "num_food" by "num_people")
 0. work out the logic of compile. what should the comiler create and ask for.
+0. should I used named parameters for dimentions? Then have diffrent types of matrixes with diffrent dimentions?
 1. rework MatrixNode. Might just use matrix or maybe just use MatrixNode.
 (the problem is compiler needs a direction to go. I can't just use the matrixes as they are.)
 (or not, idk, work out compiler)

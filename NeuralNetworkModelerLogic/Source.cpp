@@ -1,125 +1,69 @@
 #include <iostream>
+#include <vector>
 #include <memory>
-
-class DimentionData {
-public:
-	virtual uint32_t GetTotalSize() const = 0;
-};
-
-class Dimention2D : public DimentionData {
-public:
-    Dimention2D() {
-        numRows = std::make_shared<uint32_t>(0);
-		numColumns = std::make_shared<uint32_t>(0);
-    }
-
-	uint32_t GetTotalSize() const override {
-		return *numRows * *numColumns;
-	}
-    
-	std::shared_ptr<uint32_t>& GetNumRows() {
-		return numRows;
-	}
-
-	std::shared_ptr<uint32_t>& GetNumColumns() {
-		return numColumns;
-	}
-    
-private:
-    std::shared_ptr<uint32_t> numRows;
-	std::shared_ptr<uint32_t> numColumns;
-};
 
 class Matrix {
 public:
-	Matrix(DimentionData dimentionData) {
-		totalSize = dimentionData.GetTotalSize();
-		data = std::make_unique<float[]>(totalSize);
-	}
+    Matrix(std::shared_ptr<int> rows, std::shared_ptr<int> columns)
+        : numRows(rows), numColumns(columns) {}
 
-    float Get(uint32_t index) const {
-        return data[index];
-    }
-
-    void Set(uint32_t index, float value) {
-        data[index] = value;
-    }
-
-	uint32_t GetTotalSize() const {
-		return totalSize;
-	}
-
-protected:
-    uint32_t totalSize;
-    std::unique_ptr<float[]> data;
+    std::shared_ptr<int> numRows;
+    std::shared_ptr<int> numColumns;
 };
 
-class Matrix2D : public DataType {
+class OperationComponent {
 public:
-    Matrix2D(uint32_t rows, uint32_t columns)
-        : numRows(rows), numColumns(columns) {
-        totalSize = rows * columns;
-        data = std::make_unique<float[]>(totalSize);
-    }
+    OperationComponent(std::shared_ptr<Matrix> left, std::shared_ptr<Matrix> right)
+        : leftMatrix(left), rightMatrix(right) {}
 
-private:
-    uint32_t numRows;
-    uint32_t numColumns;
-};
-
-class OperatorComponent {
-public:
-    virtual ~OperatorComponent() {}
-    virtual void ConnectInput(uint32_t index, std::shared_ptr<DataType> input) = 0;
-    virtual void ConnectOutput(uint32_t index, std::shared_ptr<DataType> output) = 0;
-    virtual void Compute() = 0;
-    virtual void InitializeOutput() = 0;
-
-protected:
-    uint32_t numInputs;
-    uint32_t numOutputs;
-    std::unique_ptr<std::shared_ptr<DataType>[]> inputArray;
-    std::unique_ptr<std::shared_ptr<DataType>[]> outputArray;
-};
-
-class ReluComponent : public OperatorComponent {
-public:
-    ReluComponent() {
-        numInputs = 1;
-        numOutputs = 1;
-        inputArray = std::make_unique<std::shared_ptr<DataType>[]>(numInputs);
-        outputArray = std::make_unique<std::shared_ptr<DataType>[]>(numOutputs);
-    }
-
-    void ConnectInput(uint32_t index, std::shared_ptr<DataType> input) override {
-        inputArray[index] = input;
-        InitializeOutput();
-    }
-
-    void ConnectOutput(uint32_t index, std::shared_ptr<DataType> output) override {
-        outputArray[index] = output;
-    }
-
-    void InitializeOutput() override {
-        if (inputArray[0]) {
-            outputArray[0] = std::make_shared<Matrix2D>(inputArray[0]->GetTotalSize(), 1);
-        }
-    }
-
-    void Compute() override {
-        for (uint32_t i = 0; i < inputArray[0]->GetTotalSize(); i++) {
-            float inputValue = inputArray[0]->Get(i);
-            float outputValue = inputValue > 0 ? inputValue : 0;
-            outputArray[0]->Set(i, outputValue);
-        }
-    }
+    std::shared_ptr<Matrix> leftMatrix;
+    std::shared_ptr<Matrix> rightMatrix;
 };
 
 int main() {
-    auto inputMatrix = std::make_shared<Matrix2D>(3, 3);
-    auto reluComponent = std::make_shared<ReluComponent>();
+    int numMatrices, numOperations;
+    std::cout << "Enter the number of matrices: ";
+    std::cin >> numMatrices;
+    std::cout << "Enter the number of operation components: ";
+    std::cin >> numOperations;
 
-    reluComponent->ConnectInput(0, inputMatrix);
+    std::vector<std::shared_ptr<int>> parameters;
+    std::vector<std::shared_ptr<Matrix>> matrices;
+
+    for (int i = 0; i < numMatrices; i++) {
+        parameters.push_back(std::make_shared<int>(0));
+        parameters.push_back(std::make_shared<int>(0));
+        matrices.push_back(std::make_shared<Matrix>(parameters[2 * i], parameters[2 * i + 1]));
+    }
+
+    std::vector<OperationComponent> operations;
+    for (int i = 0; i < numOperations; i++) {
+        int leftMatrixIndex, rightMatrixIndex;
+        std::cout << "Enter the indices of the matrices for operation " << i + 1 << ": ";
+        std::cin >> leftMatrixIndex >> rightMatrixIndex;
+
+        // Merge/share the parameter pointers between the left and right matrices
+        matrices[rightMatrixIndex]->numRows = matrices[leftMatrixIndex]->numColumns;
+        operations.push_back(OperationComponent(matrices[leftMatrixIndex], matrices[rightMatrixIndex]));
+    }
+
+    // Remove duplicate shared_ptrs from the parameters vector
+    std::vector<std::shared_ptr<int>> uniqueParameters;
+    for (const auto& param : parameters) {
+        if (std::find(uniqueParameters.begin(), uniqueParameters.end(), param) == uniqueParameters.end()) {
+            uniqueParameters.push_back(param);
+        }
+    }
+
+    int numUniqueDimensions = uniqueParameters.size();
+    std::cout << "Number of unique dimension parameters: " << numUniqueDimensions << std::endl;
+
+    for (int i = 0; i < numUniqueDimensions; i++) {
+        int dimensionSize;
+        std::cout << "Enter the size for dimension parameter " << i + 1 << ": ";
+        std::cin >> dimensionSize;
+        *uniqueParameters[i] = dimensionSize;
+    }
 
     return 0;
 }

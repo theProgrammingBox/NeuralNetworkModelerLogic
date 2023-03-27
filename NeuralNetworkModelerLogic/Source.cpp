@@ -18,6 +18,17 @@ TODO
 2. when hovering over a matrix, highlight all of the connections it represents
 */
 
+class Parameter
+{
+public:
+	std::string name;
+
+	void PrintName()
+	{
+		printf("%s", name);
+	}
+};
+
 class Matrix
 {
 public:
@@ -25,6 +36,8 @@ public:
 	// name, like "input matrix", implement this later
 	// dimensions?, work out the different types and what it means for the compiler
 	//std::unique_ptr<float[]> data;	// not nessicary, if we are just using the matrix for visualization
+	uint32_t parametersCount;
+	std::unique_ptr<std::shared_ptr <Parameter>[]> parameters;
 };
 
 class inputMatrixNode
@@ -141,6 +154,19 @@ public:
 		// ask user to create or connect matrix to inputMatrixNode if there is no matrix in a created node
 		// for outputMatrixNode, just ignore it if there is no matrix
 		// maybe add a clean up function to remove all the matrixes that are not connected to anything
+	
+		uint32_t outputNodesCount = 0;
+		for (std::shared_ptr<outputMatrixNode> outputMatrixNode : outputMatrixNodes)
+		{
+			if (outputMatrixNode->matrix)
+			{
+				outputNodesCount++;
+			}
+		}
+		if (outputNodesCount == 0)
+		{
+			printf("error, no output matrixes\n");
+		}
 	}
 };
 

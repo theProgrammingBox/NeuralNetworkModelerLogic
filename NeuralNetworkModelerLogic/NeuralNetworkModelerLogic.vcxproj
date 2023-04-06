@@ -129,20 +129,6 @@
   <ItemGroup>
     <ClCompile Include="Source.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Component.h" />
-    <ClInclude Include="Conv3DComponent.h" />
-    <ClInclude Include="MatMulComponent.h" />
-    <ClInclude Include="Matrix.h" />
-    <ClInclude Include="Matrix2D.h" />
-    <ClInclude Include="Matrix3D.h" />
-    <ClInclude Include="Matrix4D.h" />
-    <ClInclude Include="OperationComponent.h" />
-    <ClInclude Include="ToMatrix2D.h" />
-    <ClInclude Include="ToMatrix3D.h" />
-    <ClInclude Include="ToMatrix4D.h" />
-    <ClInclude Include="Transpose.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

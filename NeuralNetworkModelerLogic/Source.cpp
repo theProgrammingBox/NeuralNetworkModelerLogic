@@ -14,14 +14,12 @@ public:
 class Layer
 {
 public:
-	//Layer(Tensor* inputTensor);
-	//Layer(Layer* inputLayer);
 	virtual ~Layer() = default;
 
-	Tensor* GetOutputTensor() const;
+	//Tensor* GetOutputTensor() const;
 	//virtual void Forward() = 0;
 
-private:
+protected:
 	Tensor* outputTensor;
 };
 
@@ -31,6 +29,11 @@ public:
 	MatMulLayer(Tensor* inputTensor);
 	MatMulLayer(Layer* inputLayer);
 };
+
+MatMulLayer::MatMulLayer(Tensor* inputTensor)
+{
+	this->inputTensor = inputTensor;
+}
 
 class MatAddLayer : public Layer
 {

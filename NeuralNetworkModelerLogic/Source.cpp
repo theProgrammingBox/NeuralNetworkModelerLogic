@@ -1,37 +1,67 @@
 #include <iostream>
 #include <vector>
 
-struct environment
+/*
+Brainstorm:
+- the modeler should be a sort of directed graph of gpu pointers and operations
+- deep insances of these models are needed for storage of internal states and gradients
+- concate operator requires space in memory that is ajacent to each other (or do a copy)
+*/
+
+struct Layer
 {
-	void reset(float* observation)
-	{
-		//
-	}
+	int size;
+	Layer(int size) : size(size) {}
+};
+
+class Operation
+{
+public:
+	virtual void forward() = 0;
+	virtual void backward() = 0;
+};
+
+class Linear : public Operation
+{
+public:
+	Linear(Layer* input, int outputSize) {}
+	void forward() override {}
+	void backward() override {}
+};
+
+class Activation {
+public:
+	virtual void forward() = 0;
+	virtual void backward() = 0;
+};
+
+class ReLU : public Activation
+{
+public:
+	void forward() override {}
+	void backward() override {}
 };
 
 struct ModelModeler
 {
-	void add()
+	std::vector<Layer*> layers;
+	Layer* expect(Layer* layer)
 	{
-		//
+		layers.push_back(layer);
+		return layer;
 	}
+	Layer add(Operation* op, Activation* act) {}
+};
+
+struct Layer
+{
 };
 
 int main()
 {
-	environment env;
-	std::vector<float*> observation;
-
 	ModelModeler modeler;
-	float* input = modeler.expect(10);
-	float* hidden1 = modeler.add(input, 64);
-	float* relu1 = modeler.add(hidden1, relu);
-	float* hidden2 = modeler.add(relu1, 64);
-	float* relu2 = modeler.add(hidden2, relu);
-	float* output = modeler.give(relu2, 2);
-
-	float* obs = new float[10];
-	env.reset(obs);
+	Layer* input = modeler.expect(new Layer(10));
+	Layer* hidden1 = modeler.add(new Linear(input, 20), new ReLU());
 
     return 0;
 }

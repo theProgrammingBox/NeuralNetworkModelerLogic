@@ -14,7 +14,11 @@ flattened dimentions are correct first
 struct Layer
 {
 	int size;
-	Layer(int size) : size(size) {}
+	float* data;
+	Layer(int size) : size(size)
+	{
+		// gpu malloc
+	}
 };
 
 class Operation
@@ -27,7 +31,11 @@ public:
 class Linear : public Operation
 {
 public:
-	Linear(Layer* input, int outputSize) {}
+	Linear(Layer* input, int outputSize)
+	{
+		assert(outputSize > 0);
+		assert(input->size == outputSize);
+	}
 	void forward() override {}
 	void backward() override {}
 };
@@ -48,7 +56,6 @@ struct size2D
 class Convolution : public Operation
 {
 public:
-	// requirments: kernel size, padding, stride, dilation, input size(channel, height, width), output size(channel, height, width)
 	Convolution(Layer* input, Size3D inputSize, Size3D outputSize, size2D kernel, size2D padding, size2D stride, size2D dilation)
 	{
 		assert(inputSize.channels > 0 && inputSize.height > 0 && inputSize.width > 0);
@@ -60,6 +67,9 @@ public:
 		assert(dilation.height >= 0 && dilation.width >= 0);
 		assert((inputSize.height + 2 * padding.height - dilation.height * (kernel.height - 1) - 1) % stride.height == 0);
 		assert((inputSize.width + 2 * padding.width - dilation.width * (kernel.width - 1) - 1) % stride.width == 0);
+
+		// kernel channels = input channels
+		// kernel num = output channels
 	}
 	void forward() override {}
 	void backward() override {}
@@ -89,13 +99,11 @@ struct ModelModeler
 
 	Layer* add(Operation* op, Activation* act = nullptr)
 	{
-		/*op.generateLayers(&layers);
-		if (act != nullptr)
+		if (act)
 		{
-			act.generateLayers(&layers);
-			return act.getOutputLayer();
+			// return activation new Layer
 		}
-		return op.getOutputLayer();*/
+		// return op new Layer
 	}
 };
 
@@ -103,7 +111,7 @@ int main()
 {
 	ModelModeler modeler;
 	Layer* input = modeler.expect(new Layer(4096));
-	// the convolution math isn't correct, it's just a placeholder
+	// the convolution math below isn't correct, it's just a placeholder
 	Layer* conv1 = modeler.add(new Convolution(input, { 1, 64, 64 }, { 1, 32, 32 }, { 3, 3 }, { 0, 0 }, { 1, 1 }, { 1, 1 }), new ReLU());
 	Layer* conv2 = modeler.add(new Convolution(conv1, { 1, 32, 32 }, { 1, 8, 8 }, { 3, 3 }, { 0, 0 }, { 1, 1 }, { 1, 1 }), new ReLU());
 	Layer* hidden1 = modeler.add(new Linear(conv2, 64), new ReLU());

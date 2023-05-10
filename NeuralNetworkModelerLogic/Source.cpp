@@ -1,99 +1,37 @@
-#include <cublas_v2.h>
-#include <cudnn.h>
-#include <curand.h>
-#include <cuda_fp16.h>
-
 #include <iostream>
 #include <vector>
 
-class Tensor
+struct environment
 {
-public:
+	void reset(float* observation)
+	{
+		//
+	}
 };
 
-class Layer
+struct ModelModeler
 {
-public:
-	virtual ~Layer() = default;
-
-	//Tensor* GetOutputTensor() const;
-	//virtual void Forward() = 0;
-
-protected:
-	Tensor* outputTensor;
-};
-
-class MatMulLayer : public Layer
-{
-public:
-	MatMulLayer(Tensor* inputTensor);
-	MatMulLayer(Layer* inputLayer);
-};
-
-MatMulLayer::MatMulLayer(Tensor* inputTensor)
-{
-	this->inputTensor = inputTensor;
-}
-
-class MatAddLayer : public Layer
-{
-public:
-	MatAddLayer(Tensor* inputTensor);
-	MatAddLayer(Layer* inputLayer);
-};
-
-class ReluLayer : public Layer
-{
-public:
-	ReluLayer(Tensor* inputTensor);
-	ReluLayer(Layer* inputLayer);
-	
-private:
-	Tensor* inputTensor;
-	static const cudnnActivationDescriptor_t reluActivationDescriptor;
-};
-
-class SoftmaxLayer : public Layer
-{
-public:
-	SoftmaxLayer(Tensor* inputTensor);
-	SoftmaxLayer(Layer* inputLayer);
-};
-
-class SoftmaxSamplerLayer : public Layer
-{
-public:
-	SoftmaxSamplerLayer(Tensor* inputTensor);
-	SoftmaxSamplerLayer(Layer* inputLayer);
-};
-
-class NetworkModeler
-{
-public:
-	Tensor* AddTensor();
-	Layer* AddLayer(Layer* layer);
-	Tensor* GetTensor(Layer* layer);
-	void Forward();
-
-private:
-	static const cublasHandle_t cublasHandle;
-	static const cudnnHandle_t cudnnHandle;
-	static const curandGenerator_t curandGenerator;
+	void add()
+	{
+		//
+	}
 };
 
 int main()
 {
-    NetworkModeler modeler;
-	
-    auto inputTensor = modeler.AddTensor();
-	auto layer1MatMul = modeler.AddLayer(new MatMulLayer(inputTensor));
-	auto layer1MatAdd = modeler.AddLayer(new MatAddLayer(layer1MatMul));
-	auto layer1Relu = modeler.AddLayer(new ReluLayer(layer1MatAdd));
-	auto layer2MatMul = modeler.AddLayer(new MatMulLayer(layer1Relu));
-	auto layer2MatAdd = modeler.AddLayer(new MatAddLayer(layer2MatMul));
-	auto layer2Softmax = modeler.AddLayer(new SoftmaxLayer(layer2MatAdd));
-	auto softmaxSampler = modeler.AddLayer(new SoftmaxSamplerLayer(layer2Softmax));
-	auto outputTensor = modeler.GetTensor(softmaxSampler);
+	environment env;
+	std::vector<float*> observation;
+
+	ModelModeler modeler;
+	float* input = modeler.expect(10);
+	float* hidden1 = modeler.add(input, 64);
+	float* relu1 = modeler.add(hidden1, relu);
+	float* hidden2 = modeler.add(relu1, 64);
+	float* relu2 = modeler.add(hidden2, relu);
+	float* output = modeler.give(relu2, 2);
+
+	float* obs = new float[10];
+	env.reset(obs);
 
     return 0;
 }

@@ -7,6 +7,8 @@ Brainstorm:
 - the modeler should be a sort of directed graph of gpu pointers and operations
 - deep insances of these models are needed for storage of internal states and gradients
 - concate operator requires space in memory that is ajacent to each other (or do a copy)
+- don't deal with dimentions, just pass in pointers to gpu arrs. assert that the
+flattened dimentions are correct first
 */
 
 struct Layer
@@ -30,29 +32,15 @@ public:
 	void backward() override {}
 };
 
-struct Size {
+struct Size3D
+{
 	int channels;
 	int height;
 	int width;
 };
 
-struct Kernel {
-	int num_kernels;
-	int height;
-	int width;
-};
-
-struct Padding {
-	int height;
-	int width;
-};
-
-struct Stride {
-	int height;
-	int width;
-};
-
-struct Dilation {
+struct size2D
+{
 	int height;
 	int width;
 };
@@ -61,10 +49,11 @@ class Convolution : public Operation
 {
 public:
 	// requirments: kernel size, padding, stride, dilation, input size(channel, height, width), output size(channel, height, width)
-	Convolution(Layer* input, Size inputSize, Size outputSize, Kernel kernel, Padding padding, Stride stride, Dilation dilation)
+	Convolution(Layer* input, Size3D inputSize, Size3D outputSize, size2D kernel, size2D padding, size2D stride, size2D dilation)
 	{
+		assert(inputSize.channels > 0 && inputSize.height > 0 && inputSize.width > 0);
+		assert(outputSize.channels > 0 && outputSize.height > 0 && outputSize.width > 0);
 		assert(input->size == inputSize.channels * inputSize.height * inputSize.width);
-		assert(kernel.num_kernels == outputSize.channels);
 		assert(kernel.height > 0 && kernel.width > 0);
 		assert(padding.height >= 0 && padding.width >= 0);
 		assert(stride.height > 0 && stride.width > 0);
@@ -114,8 +103,9 @@ int main()
 {
 	ModelModeler modeler;
 	Layer* input = modeler.expect(new Layer(4096));
-	Layer* conv1 = modeler.add(new Convolution(input, 1024), new ReLU());
-	Layer* conv2 = modeler.add(new Convolution(conv1, 64), new ReLU());
+	// the convolution math isn't correct, it's just a placeholder
+	Layer* conv1 = modeler.add(new Convolution(input, { 1, 64, 64 }, { 1, 32, 32 }, { 3, 3 }, { 0, 0 }, { 1, 1 }, { 1, 1 }), new ReLU());
+	Layer* conv2 = modeler.add(new Convolution(conv1, { 1, 32, 32 }, { 1, 8, 8 }, { 3, 3 }, { 0, 0 }, { 1, 1 }, { 1, 1 }), new ReLU());
 	Layer* hidden1 = modeler.add(new Linear(conv2, 64), new ReLU());
 	Layer* hidden2 = modeler.add(new Linear(hidden1, 64), new ReLU());
 	Layer* output = modeler.add(new Linear(hidden2, 2));

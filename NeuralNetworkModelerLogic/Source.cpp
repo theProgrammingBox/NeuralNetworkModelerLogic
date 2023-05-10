@@ -14,12 +14,24 @@ flattened dimentions are correct first
 struct Layer
 {
 	int size;
-	Layer(int size) : size(size) {}
+
+	Layer(int size)
+	{
+		assert(size > 0);
+		this->size = size;
+	}
 };
 
 class Operation
 {
 public:
+	Layer* inputLayer;
+	Layer* outputLayer;
+
+	Layer* getOutput()
+	{
+		return outputLayer;
+	}
 };
 
 class Linear : public Operation
@@ -27,8 +39,8 @@ class Linear : public Operation
 public:
 	Linear(Layer* input, int outputSize)
 	{
-		assert(outputSize > 0);
-		assert(input->size == outputSize);
+		inputLayer = input;
+		outputLayer = new Layer(outputSize);
 	}
 };
 
@@ -59,51 +71,69 @@ public:
 		assert(dilation.height >= 0 && dilation.width >= 0);
 		assert((inputSize.height + 2 * padding.height - dilation.height * (kernel.height - 1) - 1) % stride.height == 0);
 		assert((inputSize.width + 2 * padding.width - dilation.width * (kernel.width - 1) - 1) % stride.width == 0);
+		
+		inputLayer = input;
+		outputLayer = new Layer(outputSize.channels * outputSize.height * outputSize.width);
 
 		// kernel channels = input channels
 		// kernel num = output channels
 	}
-};;
-
-class Activation
-{
-public:
 };
 
-class ReLU : public Activation
+class ReLU : public Operation
 {
 public:
+	ReLU(Layer* input)
+	{
+		inputLayer = input;
+		outputLayer = new Layer(input->size);
+	}
 };
 
 struct ModelModeler
 {
-	std::vector<Layer*> layers;
+	std::vector<Layer*> startingLayers;
+	std::vector<Layer*> middleLayers;
+	std::vector<Layer*> endLayers;
+
 	Layer* expect(Layer* layer)
 	{
-		layers.push_back(layer);
+		startingLayers.push_back(layer);
 		return layer;
 	}
 
-	Layer* add(Operation* op, Activation* act = nullptr)
+	Layer* add(Operation* op)
 	{
-		if (act)
-		{
-			// return activation new Layer
-		}
-		// return op new Layer
+		middleLayers.push_back(op->getOutput());
+		return op->getOutput();
+	}
+
+	Layer* deliver(Operation* op)
+	{
+		endLayers.push_back(op->getOutput());
+		return op->getOutput();
+	}
+
+	void compile()
+	{
+		
 	}
 };
 
 int main()
 {
 	ModelModeler modeler;
-	Layer* input = modeler.expect(new Layer(4096));
-	// the convolution math below isn't correct, it's just a placeholder
-	Layer* conv1 = modeler.add(new Convolution(input, { 1, 64, 64 }, { 1, 32, 32 }, { 3, 3 }, { 0, 0 }, { 1, 1 }, { 1, 1 }), new ReLU());
-	Layer* conv2 = modeler.add(new Convolution(conv1, { 1, 32, 32 }, { 1, 8, 8 }, { 3, 3 }, { 0, 0 }, { 1, 1 }, { 1, 1 }), new ReLU());
-	Layer* hidden1 = modeler.add(new Linear(conv2, 64), new ReLU());
-	Layer* hidden2 = modeler.add(new Linear(hidden1, 64), new ReLU());
-	Layer* output = modeler.add(new Linear(hidden2, 2));
+	Layer* input = modeler.expect(new Layer(64 * 64));
+	Layer* conv1 = modeler.add(new Convolution(input, { 1, 64, 64 }, { 1, 32, 32 }, { 2, 2 }, { 0, 0 }, { 2, 2 }, { 1, 1 }));
+	Layer* relu1 = modeler.add(new ReLU(conv1));
+	Layer* conv2 = modeler.add(new Convolution(conv1, { 1, 32, 32 }, { 1, 8, 8 }, { 4, 4 }, { 0, 0 }, { 4, 4 }, { 1, 1 }));
+	Layer* relu2 = modeler.add(new ReLU(conv2));
+	Layer* hidden1 = modeler.add(new Linear(conv2, 64));
+	Layer* relu3 = modeler.add(new ReLU(hidden1));
+	Layer* hidden2 = modeler.add(new Linear(hidden1, 64));
+	Layer* relu4 = modeler.add(new ReLU(hidden2));
+	Layer* output = modeler.deliver(new Linear(hidden2, 2));
+	modeler.compile();
 
     return 0;
 }

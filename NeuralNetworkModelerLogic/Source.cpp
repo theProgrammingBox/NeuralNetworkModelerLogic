@@ -14,18 +14,12 @@ flattened dimentions are correct first
 struct Layer
 {
 	int size;
-	float* data;
-	Layer(int size) : size(size)
-	{
-		// gpu malloc
-	}
+	Layer(int size) : size(size) {}
 };
 
 class Operation
 {
 public:
-	virtual void forward() = 0;
-	virtual void backward() = 0;
 };
 
 class Linear : public Operation
@@ -36,8 +30,6 @@ public:
 		assert(outputSize > 0);
 		assert(input->size == outputSize);
 	}
-	void forward() override {}
-	void backward() override {}
 };
 
 struct Size3D
@@ -47,7 +39,7 @@ struct Size3D
 	int width;
 };
 
-struct size2D
+struct Size2D
 {
 	int height;
 	int width;
@@ -56,7 +48,7 @@ struct size2D
 class Convolution : public Operation
 {
 public:
-	Convolution(Layer* input, Size3D inputSize, Size3D outputSize, size2D kernel, size2D padding, size2D stride, size2D dilation)
+	Convolution(Layer* input, Size3D inputSize, Size3D outputSize, Size2D kernel, Size2D padding, Size2D stride, Size2D dilation)
 	{
 		assert(inputSize.channels > 0 && inputSize.height > 0 && inputSize.width > 0);
 		assert(outputSize.channels > 0 && outputSize.height > 0 && outputSize.width > 0);
@@ -71,21 +63,16 @@ public:
 		// kernel channels = input channels
 		// kernel num = output channels
 	}
-	void forward() override {}
-	void backward() override {}
 };;
 
-class Activation {
+class Activation
+{
 public:
-	virtual void forward() = 0;
-	virtual void backward() = 0;
 };
 
 class ReLU : public Activation
 {
 public:
-	void forward() override {}
-	void backward() override {}
 };
 
 struct ModelModeler

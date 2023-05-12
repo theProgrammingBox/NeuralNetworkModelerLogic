@@ -8,12 +8,16 @@
 
 /*
 TOTO:
-- rework weights and bias (add method to include hidden parameters)
-- work out hidden states
-- Add in gradient arrs
-- Add more concat
-- Add Attention (no mask)
+- rework data layout as presented in Thought Organization
+- implement cudnn and cublas operations
+- implement curand random initialization (orthogonal)
 - unit test cuda operations
+
+- Add in gradient arrs
+- Add concat
+(should I just copy both inputs into a new arr?)
+- Add Attention (no mask)
+(rethink, transpose operations should be defined by expected inputs?)
 */
 
 /*

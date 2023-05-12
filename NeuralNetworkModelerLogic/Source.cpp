@@ -146,12 +146,41 @@ struct ReLU : Operation
 
 struct NeuralNetwork
 {
+	std::vector<Operation*> inputs;
 	std::vector<Operation*> operations;
+	std::vector<Operation*> outputs;
+
+	Operation* AddInput(Operation* operation)
+	{
+		inputs.emplace_back(operation);
+		return operation;
+	}
 
 	Operation* AddOperation(Operation* operation)
 	{
 		operations.emplace_back(operation);
 		return operation;
+	}
+
+	Operation* AddOutput(Operation* operation)
+	{
+		outputs.emplace_back(operation);
+		operations.emplace_back(operation);
+		return operation;
+	}
+
+	void ProvideInput(uint32_t idx, float* input)
+	{
+		assert(idx < inputs.size());
+		assert(input != nullptr);
+		memcpy(inputs[idx]->outputArr, input, inputs[idx]->outputSize * sizeof(float));
+	}
+
+	void ReceiveOutput(uint32_t idx, float* output)
+	{
+		assert(idx < outputs.size());
+		assert(output != nullptr);
+		memcpy(output, outputs[idx]->outputArr, outputs[idx]->outputSize * sizeof(float));
 	}
 
 	void Forward()
@@ -172,7 +201,7 @@ struct NeuralNetwork
 int main()
 {
 	NeuralNetwork nn;
-	auto input1 = nn.AddOperation(new Input(64 * 64));
+	auto input1 = nn.AddInput(new Input(64 * 64));
 	auto conv1 = nn.AddOperation(new Convolution(input1, { 1, 64, 64 }, { 1, 32, 32 }, { 2, 2 }, { 0, 0 }, { 2, 2 }, { 1, 1 }));
 	auto relu1 = nn.AddOperation(new ReLU(conv1));
 	auto conv2 = nn.AddOperation(new Convolution(conv1, { 1, 32, 32 }, { 1, 8, 8 }, { 4, 4 }, { 0, 0 }, { 4, 4 }, { 1, 1 }));
@@ -181,7 +210,7 @@ int main()
 	auto relu3 = nn.AddOperation(new ReLU(hidden1));
 	auto hidden2 = nn.AddOperation(new Linear(hidden1, 64));
 	auto relu4 = nn.AddOperation(new ReLU(hidden2));
-	auto output = nn.AddOperation(new Linear(hidden2, 2));
+	auto output = nn.AddOutput(new Linear(hidden2, 2));
 
 	nn.Forward();
 	nn.Backward();

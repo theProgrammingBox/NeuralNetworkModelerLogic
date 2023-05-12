@@ -39,6 +39,7 @@ the next iteration)
 size of the matrix, not dimentions to make it easier to work with. Basically, instead of saying
 reshape to this, you just say what shape you expect in the operation. Data layout is always
 the same, the operation changes.
+(methodology: 
 
 - include NCHW, NHWC, and transpose?
 (NCHW is pixels of the width, H times, C times, N times)

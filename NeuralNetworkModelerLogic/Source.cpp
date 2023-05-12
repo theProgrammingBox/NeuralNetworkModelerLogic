@@ -23,7 +23,10 @@ struct Input : Operation
 		inputOperation = nullptr;
 	}
 
-	void Forward() override {}
+	void Forward() override
+	{
+		printf("Input::Forward\n");
+	}
 };
 
 struct Linear : Operation
@@ -38,7 +41,10 @@ struct Linear : Operation
 		inputOperation = inputOperation;
 	}
 
-	void Forward() override {}
+	void Forward() override
+	{
+		printf("Linear::Forward\n");
+	}
 };
 
 struct Param3D
@@ -88,7 +94,10 @@ struct Convolution : Operation
 		inputOperation = inputOperation;
 	}
 
-	void Forward() override {}
+	void Forward() override
+	{
+		printf("Convolution::Forward\n");
+	}
 };
 
 struct ReLU : Operation
@@ -101,7 +110,10 @@ struct ReLU : Operation
 		inputOperation = inputOperation;
 	}
 
-	void Forward() override {}
+	void Forward() override
+	{
+		printf("ReLU::Forward\n");
+	}
 };
 
 struct NeuralNetwork
@@ -112,6 +124,14 @@ struct NeuralNetwork
 	{
 		operations.emplace_back(operation);
 		return operation;
+	}
+
+	void Forward()
+	{
+		for (auto operation : operations)
+		{
+			operation->Forward();
+		}
 	}
 };
 
@@ -128,6 +148,8 @@ int main()
 	auto hidden2 = nn.AddOperation(new Linear(hidden1, 64));
 	auto relu4 = nn.AddOperation(new ReLU(hidden2));
 	auto output = nn.AddOperation(new Linear(hidden2, 2));
+
+	nn.Forward();
 
     return 0;
 }

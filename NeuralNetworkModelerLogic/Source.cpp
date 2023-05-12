@@ -9,11 +9,15 @@
 /*
 TOTO:
 - rework data layout as presented in Thought Organization
+(add data layouts like transpose and NCHW)
 - implement cudnn and cublas operations
 - implement curand random initialization (orthogonal)
 - unit test cuda operations
+(concerned about data types and convolution layouts)
 
 - Add in gradient arrs
+- unit test backpropagation
+
 - Add concat
 (should I just copy both inputs into a new arr?)
 - Add Attention (no mask)
@@ -39,7 +43,7 @@ the next iteration)
 size of the matrix, not dimentions to make it easier to work with. Basically, instead of saying
 reshape to this, you just say what shape you expect in the operation. Data layout is always
 the same, the operation changes.
-(methodology: 
+(methodology: let user have ultimate control, but provide very basic error checking)
 
 - include NCHW, NHWC, and transpose?
 (NCHW is pixels of the width, H times, C times, N times)

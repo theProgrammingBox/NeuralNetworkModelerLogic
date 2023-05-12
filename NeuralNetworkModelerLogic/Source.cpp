@@ -2,6 +2,13 @@
 #include <vector>
 #include <assert.h>
 
+/*
+TOTO:
+- Think out a method to add inputs and access outputs
+- Add more concat
+- Add Attention (no mask)
+*/
+
 struct Operation
 {
 	uint32_t outputSize;
@@ -10,6 +17,7 @@ struct Operation
 
 	virtual ~Operation() = default;
 	virtual void Forward() = 0;
+	virtual void Backward() = 0;
 };
 
 struct Input : Operation
@@ -26,6 +34,11 @@ struct Input : Operation
 	void Forward() override
 	{
 		printf("Input::Forward\n");
+	}
+
+	void Backward() override
+	{
+		printf("Input::Backward\n");
 	}
 };
 
@@ -44,6 +57,11 @@ struct Linear : Operation
 	void Forward() override
 	{
 		printf("Linear::Forward\n");
+	}
+
+	void Backward() override
+	{
+		printf("Linear::Backward\n");
 	}
 };
 
@@ -98,6 +116,11 @@ struct Convolution : Operation
 	{
 		printf("Convolution::Forward\n");
 	}
+
+	void Backward() override
+	{
+		printf("Convolution::Backward\n");
+	}
 };
 
 struct ReLU : Operation
@@ -114,6 +137,11 @@ struct ReLU : Operation
 	{
 		printf("ReLU::Forward\n");
 	}
+
+	void Backward() override
+	{
+		printf("ReLU::Backward\n");
+	}
 };
 
 struct NeuralNetwork
@@ -129,9 +157,15 @@ struct NeuralNetwork
 	void Forward()
 	{
 		for (auto operation : operations)
-		{
 			operation->Forward();
-		}
+		printf("\n");
+	}
+
+	void Backward()
+	{
+		for (auto operation = operations.rbegin(); operation != operations.rend(); ++operation)
+			(*operation)->Backward();
+		printf("\n");
 	}
 };
 
@@ -150,6 +184,7 @@ int main()
 	auto output = nn.AddOperation(new Linear(hidden2, 2));
 
 	nn.Forward();
+	nn.Backward();
 
     return 0;
 }

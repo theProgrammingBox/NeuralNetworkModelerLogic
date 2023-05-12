@@ -2,17 +2,41 @@
 #include <vector>
 #include <assert.h>
 
+//#include <cudnn.h>
+//#include <cublas_v2.h>
+//#include <curand.h>
+
 /*
 TOTO:
+- rework weights and bias (add method to include hidden parameters)
+- work out hidden states
 - Add in gradient arrs
 - Add more concat
 - Add Attention (no mask)
 */
 
+/*
+Thought Organized as a Neural Network, this is actually a computational graph.
+*/
+
+struct Param3D
+{
+	int channels;
+	int height;
+	int width;
+};
+
+struct Param2D
+{
+	int height;
+	int width;
+};
+
 struct Operation
 {
 	uint32_t outputSize;
 	float* outputArr;
+	float* gradientArr;
 	Operation* inputOperation;
 
 	virtual ~Operation() = default;
@@ -28,6 +52,7 @@ struct Input : Operation
 
 		this->outputSize = size;
 		this->outputArr = new float[size];
+		this->gradientArr = new float[size];
 		inputOperation = nullptr;
 	}
 
@@ -44,6 +69,8 @@ struct Input : Operation
 
 struct Linear : Operation
 {
+	float* weightArr;
+
 	Linear(Operation* inputOperation, uint32_t outputSize)
 	{
 		assert(inputOperation != nullptr);
@@ -51,6 +78,7 @@ struct Linear : Operation
 
 		this->outputSize = outputSize;
 		this->outputArr = new float[outputSize];
+		this->gradientArr = new float[outputSize];
 		inputOperation = inputOperation;
 	}
 
@@ -63,19 +91,6 @@ struct Linear : Operation
 	{
 		printf("Linear::Backward\n");
 	}
-};
-
-struct Param3D
-{
-	int channels;
-	int height;
-	int width;
-};
-
-struct Param2D
-{
-	int height;
-	int width;
 };
 
 struct Convolution : Operation
@@ -109,6 +124,7 @@ struct Convolution : Operation
 
 		outputSize = outputParam.channels * outputParam.height * outputParam.width;
 		this->outputArr = new float[outputSize];
+		this->gradientArr = new float[outputSize];
 		inputOperation = inputOperation;
 	}
 
@@ -130,6 +146,7 @@ struct ReLU : Operation
 		assert(inputOperation != nullptr);
 		this->outputSize = inputOperation->outputSize;
 		this->outputArr = new float[outputSize];
+		this->gradientArr = new float[outputSize];
 		inputOperation = inputOperation;
 	}
 
@@ -146,24 +163,39 @@ struct ReLU : Operation
 
 struct NeuralNetwork
 {
+	//cublasHandle_t cublasHandle;
+	//cudnnHandle_t cudnnHandle;
+	//curandGenerator_t curandGenerator;
+
 	std::vector<Operation*> inputs;
 	std::vector<Operation*> operations;
 	std::vector<Operation*> outputs;
 
+	NeuralNetwork()
+	{
+		//cublasCreate(&cublasHandle);
+		//cudnnCreate(&cudnnHandle);
+		//curandCreateGenerator(&curandGenerator, CURAND_RNG_PSEUDO_DEFAULT);
+		//curandSetPseudoRandomGeneratorSeed(curandGenerator, 1337ULL);
+	}
+
 	Operation* AddInput(Operation* operation)
 	{
+		assert(operation != nullptr);
 		inputs.emplace_back(operation);
 		return operation;
 	}
 
 	Operation* AddOperation(Operation* operation)
 	{
+		assert(operation != nullptr);
 		operations.emplace_back(operation);
 		return operation;
 	}
 
 	Operation* AddOutput(Operation* operation)
 	{
+		assert(operation != nullptr);
 		outputs.emplace_back(operation);
 		operations.emplace_back(operation);
 		return operation;
@@ -181,6 +213,20 @@ struct NeuralNetwork
 		assert(idx < outputs.size());
 		assert(output != nullptr);
 		memcpy(output, outputs[idx]->outputArr, outputs[idx]->outputSize * sizeof(float));
+	}
+
+	void ObtainInputGradient(uint32_t idx, float* gradient)
+	{
+		assert(idx < outputs.size());
+		assert(gradient != nullptr);
+		memcpy(gradient, inputs[idx]->gradientArr, inputs[idx]->outputSize * sizeof(float));
+	}
+
+	void ProvideOutputGradient(uint32_t idx, float* gradient)
+	{
+		assert(idx < outputs.size());
+		assert(gradient != nullptr);
+		memcpy(outputs[idx]->gradientArr, gradient, outputs[idx]->outputSize * sizeof(float));
 	}
 
 	void Forward()

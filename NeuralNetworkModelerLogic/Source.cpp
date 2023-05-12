@@ -4,7 +4,7 @@
 
 /*
 TOTO:
-- Think out a method to add inputs and access outputs
+- Add in gradient arrs
 - Add more concat
 - Add Attention (no mask)
 */
@@ -176,7 +176,7 @@ struct NeuralNetwork
 		memcpy(inputs[idx]->outputArr, input, inputs[idx]->outputSize * sizeof(float));
 	}
 
-	void ReceiveOutput(uint32_t idx, float* output)
+	void ObtainOutput(uint32_t idx, float* output)
 	{
 		assert(idx < outputs.size());
 		assert(output != nullptr);
@@ -210,9 +210,14 @@ int main()
 	auto relu3 = nn.AddOperation(new ReLU(hidden1));
 	auto hidden2 = nn.AddOperation(new Linear(hidden1, 64));
 	auto relu4 = nn.AddOperation(new ReLU(hidden2));
-	auto output = nn.AddOutput(new Linear(hidden2, 2));
+	auto output1 = nn.AddOutput(new Linear(hidden2, 2));
 
+	float input[64 * 64];
+	float output[2];
+
+	nn.ProvideInput(0, input);
 	nn.Forward();
+	nn.ObtainOutput(0, output);
 	nn.Backward();
 
     return 0;

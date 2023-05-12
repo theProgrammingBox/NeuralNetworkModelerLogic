@@ -13,10 +13,34 @@ TOTO:
 - Add in gradient arrs
 - Add more concat
 - Add Attention (no mask)
+- unit test cuda operations
 */
 
 /*
-Thought Organized as a Neural Network, this is actually a computational graph.
+Thought Organization:
+- ParameterInput is a matrix that is filled by noone
+(it is randomly initialized during network creation and is updated during training)
+- UserInput is a matrix that the user is expected to fill before each iteration
+- NetworkInput is a matrix that the network of the previous iteration is expected to fill
+(generates an initial ParameterInput for the first iteration, then uses the output of the previous
+iteration for the next iterations)
+
+- so weights, biases, and initial hidden states are all ParameterInputs
+- user input is UserInput
+- output of the previous iteration is NetworkInput
+(define a method to get all network outputs for the previous iteration to be used as NetworkInput for
+the next iteration)
+
+- I need a more detailed description for the matrixes. Use same old method of just using the total
+size of the matrix, not dimentions to make it easier to work with. Basically, instead of saying
+reshape to this, you just say what shape you expect in the operation. Data layout is always
+the same, the operation changes.
+
+- include NCHW, NHWC, and transpose?
+(NCHW is pixels of the width, H times, C times, N times)
+
+- include data types? including expected operation output data types?
+(cudnn and cublas types like CUDNN_DATA_FLOAT, CUDNN_DATA_HALF, CUDA_R_32F, CUDA_R_16F)
 */
 
 struct Param3D

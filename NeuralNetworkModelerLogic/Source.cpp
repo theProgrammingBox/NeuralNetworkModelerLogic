@@ -2,138 +2,132 @@
 #include <vector>
 #include <assert.h>
 
-/*
-Brainstorm:
-- the modeler should be a sort of directed graph of gpu pointers and operations
-- deep insances of these models are needed for storage of internal states and gradients
-- concate operator requires space in memory that is ajacent to each other (or do a copy)
-- don't deal with dimentions, just pass in pointers to gpu arrs. assert that the
-flattened dimentions are correct first
-*/
-
-struct Layer
+struct Operation
 {
-	int size;
+	uint32_t outputSize;
+	float* outputArr;
+	Operation* inputOperation;
 
-	Layer(int size)
+	virtual ~Operation() = default;
+	virtual void Forward() = 0;
+};
+
+struct Input : Operation
+{
+	Input(uint32_t size)
 	{
 		assert(size > 0);
-		this->size = size;
+
+		this->outputSize = size;
+		this->outputArr = new float[size];
+		inputOperation = nullptr;
 	}
+
+	void Forward() override {}
 };
 
-class Operation
+struct Linear : Operation
 {
-public:
-	Layer* inputLayer;
-	Layer* outputLayer;
-
-	Layer* getOutput()
+	Linear(Operation* inputOperation, uint32_t outputSize)
 	{
-		return outputLayer;
+		assert(inputOperation != nullptr);
+		assert(outputSize > 0);
+
+		this->outputSize = outputSize;
+		this->outputArr = new float[outputSize];
+		inputOperation = inputOperation;
 	}
+
+	void Forward() override {}
 };
 
-class Linear : public Operation
-{
-public:
-	Linear(Layer* input, int outputSize)
-	{
-		inputLayer = input;
-		outputLayer = new Layer(outputSize);
-	}
-};
-
-struct Size3D
+struct Param3D
 {
 	int channels;
 	int height;
 	int width;
 };
 
-struct Size2D
+struct Param2D
 {
 	int height;
 	int width;
 };
 
-class Convolution : public Operation
+struct Convolution : Operation
 {
-public:
-	Convolution(Layer* input, Size3D inputSize, Size3D outputSize, Size2D kernel, Size2D padding, Size2D stride, Size2D dilation)
-	{
-		assert(inputSize.channels > 0 && inputSize.height > 0 && inputSize.width > 0);
-		assert(outputSize.channels > 0 && outputSize.height > 0 && outputSize.width > 0);
-		assert(input->size == inputSize.channels * inputSize.height * inputSize.width);
-		assert(kernel.height > 0 && kernel.width > 0);
-		assert(padding.height >= 0 && padding.width >= 0);
-		assert(stride.height > 0 && stride.width > 0);
-		assert(dilation.height >= 0 && dilation.width >= 0);
-		assert((inputSize.height + 2 * padding.height - dilation.height * (kernel.height - 1) - 1) % stride.height == 0);
-		assert((inputSize.width + 2 * padding.width - dilation.width * (kernel.width - 1) - 1) % stride.width == 0);
-		
-		inputLayer = input;
-		outputLayer = new Layer(outputSize.channels * outputSize.height * outputSize.width);
+	Param3D inputParam;
+	Param3D outputParam;
+	Param2D kernelParam;
+	Param2D paddingParam;
+	Param2D strideParam;
+	Param2D dilationParam;
 
-		// kernel channels = input channels
-		// kernel num = output channels
+	Convolution(Operation* inputOperation, Param3D inputParam, Param3D outputParam, Param2D kernelParam, Param2D paddingParam, Param2D strideParam, Param2D dilationParam)
+	{
+		assert(inputOperation != nullptr);
+		assert(inputParam.channels > 0 && inputParam.height > 0 && inputParam.width > 0);
+		assert(outputParam.channels > 0 && outputParam.height > 0 && outputParam.width > 0);
+		assert(inputOperation->outputSize == inputParam.channels * inputParam.height * inputParam.width);
+		assert(kernelParam.height > 0 && kernelParam.width > 0);
+		assert(paddingParam.height >= 0 && paddingParam.width >= 0);
+		assert(strideParam.height > 0 && strideParam.width > 0);
+		assert(dilationParam.height >= 0 && dilationParam.width >= 0);
+		assert((inputParam.height + 2 * paddingParam.height - dilationParam.height * (kernelParam.height - 1) - 1) % strideParam.height == 0);
+		assert((inputParam.width + 2 * paddingParam.width - dilationParam.width * (kernelParam.width - 1) - 1) % strideParam.width == 0);
+
+		this->inputParam = inputParam;
+		this->outputParam = outputParam;
+		this->kernelParam = kernelParam;
+		this->paddingParam = paddingParam;
+		this->strideParam = strideParam;
+		this->dilationParam = dilationParam;
+
+		outputSize = outputParam.channels * outputParam.height * outputParam.width;
+		this->outputArr = new float[outputSize];
+		inputOperation = inputOperation;
 	}
+
+	void Forward() override {}
 };
 
-class ReLU : public Operation
+struct ReLU : Operation
 {
-public:
-	ReLU(Layer* input)
+	ReLU(Operation* inputOperation)
 	{
-		inputLayer = input;
-		outputLayer = new Layer(input->size);
+		assert(inputOperation != nullptr);
+		this->outputSize = inputOperation->outputSize;
+		this->outputArr = new float[outputSize];
+		inputOperation = inputOperation;
 	}
+
+	void Forward() override {}
 };
 
-struct ModelModeler
+struct NeuralNetwork
 {
-	std::vector<Layer*> startingLayers;
-	std::vector<Layer*> middleLayers;
-	std::vector<Layer*> endLayers;
+	std::vector<Operation*> operations;
 
-	Layer* expect(Layer* layer)
+	Operation* AddOperation(Operation* operation)
 	{
-		startingLayers.push_back(layer);
-		return layer;
-	}
-
-	Layer* add(Operation* op)
-	{
-		middleLayers.push_back(op->getOutput());
-		return op->getOutput();
-	}
-
-	Layer* deliver(Operation* op)
-	{
-		endLayers.push_back(op->getOutput());
-		return op->getOutput();
-	}
-
-	void compile()
-	{
-		
+		operations.emplace_back(operation);
+		return operation;
 	}
 };
 
 int main()
 {
-	ModelModeler modeler;
-	Layer* input = modeler.expect(new Layer(64 * 64));
-	Layer* conv1 = modeler.add(new Convolution(input, { 1, 64, 64 }, { 1, 32, 32 }, { 2, 2 }, { 0, 0 }, { 2, 2 }, { 1, 1 }));
-	Layer* relu1 = modeler.add(new ReLU(conv1));
-	Layer* conv2 = modeler.add(new Convolution(conv1, { 1, 32, 32 }, { 1, 8, 8 }, { 4, 4 }, { 0, 0 }, { 4, 4 }, { 1, 1 }));
-	Layer* relu2 = modeler.add(new ReLU(conv2));
-	Layer* hidden1 = modeler.add(new Linear(conv2, 64));
-	Layer* relu3 = modeler.add(new ReLU(hidden1));
-	Layer* hidden2 = modeler.add(new Linear(hidden1, 64));
-	Layer* relu4 = modeler.add(new ReLU(hidden2));
-	Layer* output = modeler.deliver(new Linear(hidden2, 2));
-	modeler.compile();
+	NeuralNetwork nn;
+	auto input1 = nn.AddOperation(new Input(64 * 64));
+	auto conv1 = nn.AddOperation(new Convolution(input1, { 1, 64, 64 }, { 1, 32, 32 }, { 2, 2 }, { 0, 0 }, { 2, 2 }, { 1, 1 }));
+	auto relu1 = nn.AddOperation(new ReLU(conv1));
+	auto conv2 = nn.AddOperation(new Convolution(conv1, { 1, 32, 32 }, { 1, 8, 8 }, { 4, 4 }, { 0, 0 }, { 4, 4 }, { 1, 1 }));
+	auto relu2 = nn.AddOperation(new ReLU(conv2));
+	auto hidden1 = nn.AddOperation(new Linear(conv2, 64));
+	auto relu3 = nn.AddOperation(new ReLU(hidden1));
+	auto hidden2 = nn.AddOperation(new Linear(hidden1, 64));
+	auto relu4 = nn.AddOperation(new ReLU(hidden2));
+	auto output = nn.AddOperation(new Linear(hidden2, 2));
 
     return 0;
 }

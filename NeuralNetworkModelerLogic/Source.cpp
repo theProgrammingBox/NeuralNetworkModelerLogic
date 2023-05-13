@@ -52,20 +52,26 @@ the same, the operation changes.
 (cudnn and cublas types like CUDNN_DATA_FLOAT, CUDNN_DATA_HALF, CUDA_R_32F, CUDA_R_16F)
 */
 
-struct Param3D
+struct Param4D
 {
-	uint32_t batches;
+	uint32_t width;
+	uint32_t height;
 	uint32_t channels;
-	uint32_t height;
-	uint32_t width;
-};
-
-struct Param2D
-{
 	uint32_t batches;
-	uint32_t height;
-	uint32_t width;
-	cudaDataType_t dataType;
+
+	Param4D(uint32_t width = 1, uint32_t height = 1, uint32_t channels = 1, uint32_t batches = 1)
+	{
+		assert(width > 0 && height > 0 && channels > 0 && batches > 0);
+		this->width = width;
+		this->height = height;
+		this->channels = channels;
+		this->batches = batches;
+	}
+
+	uint32_t size() const
+	{
+		return width * height * channels * batches;
+	}
 };
 
 /*
@@ -73,12 +79,12 @@ cublasGemmStridedBatchedEx
 	(
 		cublasHandle(H), CUBLAS_OP_N(opP), CUBLAS_OP_T(opP),
 		TENSOR_QUERY_DIMENTION(P), TENSOR_OUTPUT_AREA(P), OUTPUT_CHANNELS(P),
-		&alphaf16(H),
+		&alpha(H),
 		gpuTensorQueryWeights(opP), CUDA_R_16F(P), TENSOR_QUERY_DIMENTION(P), TENSOR_QUERY_WEIGHTS_SIZE(P),
-		gpuTensorReluOutput(opP), CUDA_R_16F(P), TENSOR_OUTPUT_AREA(P), TENSOR_OUTPUT_SIZE(P),
-		&betaf16(H),
-		gpuTensorQueries(opP), CUDA_R_16F(P), TENSOR_QUERY_DIMENTION(P), TENSOR_QUERIES_SIZE(P),
-		BATCH_SIZE(P), CUDA_R_16F(P), CUBLAS_GEMM_DEFAULT(H)
+		gpuTensorReluOutput(opP), CUDA_R_32F(P), TENSOR_OUTPUT_AREA(P), TENSOR_OUTPUT_SIZE(P),
+		&beta(H),
+		gpuTensorQueries(opP), CUDA_R_32F(P), TENSOR_QUERY_DIMENTION(P), TENSOR_QUERIES_SIZE(P),
+		BATCH_SIZE(P), CUDA_R_32F(P), CUBLAS_GEMM_DEFAULT_TENSOR_OP(H)
 	);
 */
 
@@ -213,27 +219,34 @@ struct ReLU : Operation
 
 struct NeuralNetwork
 {
-	//cublasHandle_t cublasHandle;
-	//cudnnHandle_t cudnnHandle;
-	//curandGenerator_t curandGenerator;
+	cublasHandle_t cublasHandle;
+	cudnnHandle_t cudnnHandle;
+	curandGenerator_t curandGenerator;
 
-	std::vector<Operation*> inputs;
+	std::vector<Param4D*> userInputs;
+	std::vector<Param4D*> networkInputs;
+	std::vector<Param4D*> userOutputs;
+	std::vector<Param4D*> networkOutputs;
+
 	std::vector<Operation*> operations;
-	std::vector<Operation*> outputs;
 
 	NeuralNetwork()
 	{
-		//cublasCreate(&cublasHandle);
-		//cudnnCreate(&cudnnHandle);
-		//curandCreateGenerator(&curandGenerator, CURAND_RNG_PSEUDO_DEFAULT);
-		//curandSetPseudoRandomGeneratorSeed(curandGenerator, 1337ULL);
+		cublasCreate(&cublasHandle);
+		cudnnCreate(&cudnnHandle);
+		curandCreateGenerator(&curandGenerator, CURAND_RNG_PSEUDO_DEFAULT);
+		curandSetPseudoRandomGeneratorSeed(curandGenerator, 1337ULL);
 	}
 
-	Operation* AddInput(Operation* operation)
+	Param4D* ParameterInput(Param4D* param)
 	{
-		assert(operation != nullptr);
-		inputs.emplace_back(operation);
-		return operation;
+		return param;
+	}
+
+	Param4D* UserInput(Param4D* param)
+	{
+		userInputs.emplace_back(param);
+		return param;
 	}
 
 	Operation* AddOperation(Operation* operation)
@@ -297,7 +310,7 @@ struct NeuralNetwork
 int main()
 {
 	NeuralNetwork nn;
-	auto input1 = nn.AddInput(new Input(64 * 64));
+	auto input1 = nn.ParameterInput(new ParameterInput(64 * 64));
 	auto conv1 = nn.AddOperation(new Convolution(input1, { 1, 64, 64 }, { 1, 32, 32 }, { 2, 2 }, { 0, 0 }, { 2, 2 }, { 1, 1 }));
 	auto relu1 = nn.AddOperation(new ReLU(conv1));
 	auto conv2 = nn.AddOperation(new Convolution(conv1, { 1, 32, 32 }, { 1, 8, 8 }, { 4, 4 }, { 0, 0 }, { 4, 4 }, { 1, 1 }));

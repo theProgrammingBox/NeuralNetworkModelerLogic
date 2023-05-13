@@ -2,9 +2,9 @@
 #include <vector>
 #include <assert.h>
 
-//#include <cudnn.h>
-//#include <cublas_v2.h>
-//#include <curand.h>
+#include <cudnn.h>
+#include <cublas_v2.h>
+#include <curand.h>
 
 /*
 TOTO:
@@ -54,16 +54,33 @@ the same, the operation changes.
 
 struct Param3D
 {
-	int channels;
-	int height;
-	int width;
+	uint32_t batches;
+	uint32_t channels;
+	uint32_t height;
+	uint32_t width;
 };
 
 struct Param2D
 {
-	int height;
-	int width;
+	uint32_t batches;
+	uint32_t height;
+	uint32_t width;
+	cudaDataType_t dataType;
 };
+
+/*
+cublasGemmStridedBatchedEx
+	(
+		cublasHandle(H), CUBLAS_OP_N(opP), CUBLAS_OP_T(opP),
+		TENSOR_QUERY_DIMENTION(P), TENSOR_OUTPUT_AREA(P), OUTPUT_CHANNELS(P),
+		&alphaf16(H),
+		gpuTensorQueryWeights(opP), CUDA_R_16F(P), TENSOR_QUERY_DIMENTION(P), TENSOR_QUERY_WEIGHTS_SIZE(P),
+		gpuTensorReluOutput(opP), CUDA_R_16F(P), TENSOR_OUTPUT_AREA(P), TENSOR_OUTPUT_SIZE(P),
+		&betaf16(H),
+		gpuTensorQueries(opP), CUDA_R_16F(P), TENSOR_QUERY_DIMENTION(P), TENSOR_QUERIES_SIZE(P),
+		BATCH_SIZE(P), CUDA_R_16F(P), CUBLAS_GEMM_DEFAULT(H)
+	);
+*/
 
 struct Operation
 {

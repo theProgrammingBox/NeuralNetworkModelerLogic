@@ -8,44 +8,23 @@
 
 /*
 TOTO:
+- add transpose options to matrix multiplication
 - rework data layout as presented in Thought Organization
-(add data layouts like transpose and NCHW)
 - implement cudnn and cublas operations
 - implement curand random initialization (orthogonal)
 - unit test cuda operations
-(concerned about data types and convolution layouts)
 
 - Add in gradient arrs
 - unit test backpropagation
 
+- work out multi head attention
 - Add concat
-(should I just copy both inputs into a new arr?)
-- Add Attention (no mask)
-(rethink, transpose operations should be defined by expected inputs?)
 */
 
 /*
 Thought Organization:
-- ParameterInput is a matrix that is filled by noone
-(it is randomly initialized during network creation and is updated during training)
-- UserInput is a matrix that the user is expected to fill before each iteration
-- NetworkInput is a matrix that the network of the previous iteration is expected to fill
-(generates an initial ParameterInput for the first iteration, then uses the output of the previous
-iteration for the next iterations)
-
-- so weights, biases, and initial hidden states are all ParameterInputs
-- user input is UserInput
-- output of the previous iteration is NetworkInput
-(define a method to get all network outputs for the previous iteration to be used as NetworkInput for
-the next iteration)
-
-- I need a more detailed description for the matrixes. Use same old method of just using the total
-size of the matrix, not dimentions to make it easier to work with. Basically, instead of saying
-reshape to this, you just say what shape you expect in the operation. Data layout is always
-the same, the operation changes.
-(methodology: let user have ultimate control, but provide very basic error checking)
-
-- include NCHW, NHWC, and transpose?
+- let user have ultimate control while provide very basic error checking and convenience
+- use NCHW and float by default. work towards other datatypes afterwards
 (NCHW is pixels of the width, H times, C times, N times)
 
 - include data types? including expected operation output data types?
@@ -156,11 +135,11 @@ struct Convolution : Operation
 {
 	Param4D* inputParam;
 	Param2D kernelParam;
-	Param2D paddingParam;
 	Param2D strideParam;
+	Param2D paddingParam;
 	Param2D dilationParam;
 
-	Convolution(Param4D* inputParam, Param4D outputParam, Param2D kernelParam, Param2D paddingParam, Param2D strideParam, Param2D dilationParam)
+	Convolution(Param4D* inputParam, Param4D outputParam, Param2D kernelParam = Param2D(3, 3), Param2D strideParam = Param2D(1, 1), Param2D paddingParam = Param2D(0, 0), Param2D dilationParam = Param2D(1, 1))
 	{
 		assert(inputParam != nullptr);
 		assert(inputParam->batches == outputParam.batches);
@@ -185,6 +164,7 @@ struct ReLU : Operation
 	ReLU(Param4D* inputParam)
 	{
 		assert(inputParam != nullptr);
+
 		this->inputParam = inputParam;
 		outputParam = new Param4D(inputParam);
 	}
@@ -249,23 +229,23 @@ int main()
 {
 	NeuralNetwork nn;
 
-	auto input1 = nn.UserInput(Param4D(64, 64));
-	auto conv1 = nn.AddOperation(Convolution(input1, Param4D(32, 32), Param2D(2, 2), Param2D(0, 0), Param2D(2, 2), Param2D(1, 1)));
+	auto input1 = nn.UserInput({ 64, 64 });
+	auto conv1 = nn.AddOperation(Convolution(input1, { 32, 32, 8 }, { 2, 2 }, { 2, 2 }));
 	auto relu1 = nn.AddOperation(ReLU(conv1));
 
-	auto conv2 = nn.AddOperation(Convolution(conv1, Param4D(8, 8), Param2D(4, 4), Param2D(0, 0), Param2D(4, 4), Param2D(1, 1)));
+	auto conv2 = nn.AddOperation(Convolution(conv1, { 8, 8, 32 }, { 4, 4 }, { 4, 4 }));
 	auto relu2 = nn.AddOperation(ReLU(conv2));
 
-	auto flatten1 = relu2->Reshape(Param4D(1, 64));
-	auto weight1 = nn.ParameterInput(Param4D(64, 64));
+	auto flatten1 = relu2->Reshape({ 1, 8 * 8 * 32 });
+	auto weight1 = nn.ParameterInput({ 8 * 8 * 32, 64 });
 	auto hidden1 = nn.AddOperation(MatrixMultiplication(flatten1, weight1));
 	auto relu3 = nn.AddOperation(ReLU(hidden1));
 
-	auto weight2 = nn.ParameterInput(Param4D(64, 64));
+	auto weight2 = nn.ParameterInput({ 64, 64 });
 	auto hidden2 = nn.AddOperation(MatrixMultiplication(hidden1, weight2));
 	auto relu4 = nn.AddOperation(ReLU(hidden2));
 
-	auto weight3 = nn.ParameterInput(Param4D(64, 2));
+	auto weight3 = nn.ParameterInput({ 64, 2 });
 	auto output1 = nn.AddOperation(MatrixMultiplication(hidden2, weight3));
 
     return 0;

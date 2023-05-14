@@ -2,12 +2,26 @@
 #include <vector>
 #include <assert.h>
 
-//#include <cudnn.h>
-//#include <cublas_v2.h>
-//#include <curand.h>
+const uint32_t UNDECIDED = UINT32_MAX;
+
+/*
+Description:
+- This is a neural network modeler that allows the user to create a neural network.
+- the goal is to allow the user to have complete freedom in designing every aspect of the
+operations used in the neural network. Would you like the network to output its own kernel
+weights for the next convolution? You can do that. Would you like mix different data
+types and layouts? You can do that.
+- TLDR: A project that allows the user to create a neural network at a very low level.
+*/
+
+/*
+WARNING:
+- UNDECIDED = UINT32_MAX, so you can't use UINT32_MAX as a dimention in the neural network
+*/
 
 /*
 TOTO:
+- allow more less detailed data layouts 
 - add transpose options to matrix multiplication
 - rework data layout as presented in Thought Organization
 - implement cudnn and cublas operations
@@ -19,11 +33,13 @@ TOTO:
 
 - work out multi head attention
 - Add concat
+- Add split
+
+- Add in auto order operations (compile())
 */
 
 /*
 Thought Organization:
-- let user have ultimate control while provide very basic error checking and convenience
 - use NCHW and float by default. work towards other datatypes afterwards
 (NCHW is pixels of the width, H times, C times, N times)
 
@@ -101,10 +117,11 @@ struct MatrixMultiplication : Operation
 	Param4D* inputParam1;
 	Param4D* inputParam2;
 
-	MatrixMultiplication(Param4D* inputParam1, Param4D* inputParam2)
+	MatrixMultiplication(Param4D* inputParam1, Param4D* inputParam2, Param2D transpose = {0, 0})
 	{
 		assert(inputParam1 != nullptr);
 		assert(inputParam2 != nullptr);
+		// transpose logic asserts
 		assert(inputParam1->width == inputParam2->height);
 		assert(inputParam1->batches == inputParam2->batches);
 
@@ -134,22 +151,22 @@ struct MatrixAddition : Operation
 struct Convolution : Operation
 {
 	Param4D* inputParam;
-	Param2D kernelParam;
+	Param4D* kernelParam;
 	Param2D strideParam;
 	Param2D paddingParam;
 	Param2D dilationParam;
 
-	Convolution(Param4D* inputParam, Param4D outputParam, Param2D kernelParam = Param2D(3, 3), Param2D strideParam = Param2D(1, 1), Param2D paddingParam = Param2D(0, 0), Param2D dilationParam = Param2D(1, 1))
+	Convolution(Param4D* inputParam, Param4D* kernelParam, Param2D strideParam = { 1, 1 }, Param2D paddingParam = { 0, 0 }, Param2D dilationParam = { 1, 1 })
 	{
 		assert(inputParam != nullptr);
-		assert(inputParam->batches == outputParam.batches);
-		assert(kernelParam.height > 0 && kernelParam.width > 0);
-		assert(strideParam.height > 0 && strideParam.width > 0);
-		assert(float(inputParam->height + 2 * paddingParam.height - dilationParam.height * (kernelParam.height - 1) - 1) / strideParam.height + 1 == outputParam.height);
-		assert(float(inputParam->width + 2 * paddingParam.width - dilationParam.width * (kernelParam.width - 1) - 1) / strideParam.width + 1 == outputParam.width);
+		assert(inputParam->channels == kernelParam->channels);
+		float outputHeight = float(inputParam->height + 2 * paddingParam.height - dilationParam.height * (kernelParam->height - 1) - 1) / strideParam.height + 1;
+		float outputWidth = float(inputParam->width + 2 * paddingParam.width - dilationParam.width * (kernelParam->width - 1) - 1) / strideParam.width + 1;
+		assert(outputHeight == uint32_t(outputHeight));
+		assert(outputWidth == uint32_t(outputWidth));
 
 		this->inputParam = inputParam;
-		this->outputParam = new Param4D(outputParam);
+		this->outputParam = new Param4D(outputHeight, outputWidth, kernelParam->batches, inputParam->batches);
 		this->kernelParam = kernelParam;
 		this->paddingParam = paddingParam;
 		this->strideParam = strideParam;
@@ -170,7 +187,7 @@ struct ReLU : Operation
 	}
 };
 
-struct NeuralNetwork
+struct ModelModeler
 {
 	std::vector<Param4D*> parameters;
 	std::vector<Param4D*> userInputs;
@@ -180,7 +197,7 @@ struct NeuralNetwork
 
 	std::vector<Operation*> operations;
 
-	~NeuralNetwork()
+	~ModelModeler()
 	{
 		for (Param4D* parameter : parameters)
 			delete parameter;
@@ -227,25 +244,29 @@ struct NeuralNetwork
 
 int main()
 {
-	NeuralNetwork nn;
+	ModelModeler nn;
 
-	auto input1 = nn.UserInput({ 64, 64 });
-	auto conv1 = nn.AddOperation(Convolution(input1, { 32, 32, 8 }, { 2, 2 }, { 2, 2 }));
+	auto input1 = nn.UserInput({ 4096 });
+
+	auto flatten0 = input1->Reshape({ 64, 64 });
+	auto kernel1 = nn.ParameterInput({ 2, 2, 1, 8 });
+	auto conv1 = nn.AddOperation(Convolution(input1, kernel1, { 2, 2 }));
 	auto relu1 = nn.AddOperation(ReLU(conv1));
 
-	auto conv2 = nn.AddOperation(Convolution(conv1, { 8, 8, 32 }, { 4, 4 }, { 4, 4 }));
+	auto kernel2 = nn.ParameterInput({ 4, 4, kernel1->batches, 32 });
+	auto conv2 = nn.AddOperation(Convolution(conv1, kernel2, { 4, 4 }));
 	auto relu2 = nn.AddOperation(ReLU(conv2));
 
-	auto flatten1 = relu2->Reshape({ 1, 8 * 8 * 32 });
-	auto weight1 = nn.ParameterInput({ 8 * 8 * 32, 64 });
+	auto flatten1 = relu2->Reshape({ 1, relu2->size()});
+	auto weight1 = nn.ParameterInput({ flatten1->width, 64 });
 	auto hidden1 = nn.AddOperation(MatrixMultiplication(flatten1, weight1));
 	auto relu3 = nn.AddOperation(ReLU(hidden1));
 
-	auto weight2 = nn.ParameterInput({ 64, 64 });
+	auto weight2 = nn.ParameterInput({ relu3->width, 64 });
 	auto hidden2 = nn.AddOperation(MatrixMultiplication(hidden1, weight2));
 	auto relu4 = nn.AddOperation(ReLU(hidden2));
 
-	auto weight3 = nn.ParameterInput({ 64, 2 });
+	auto weight3 = nn.ParameterInput({ relu4->width, 2 });
 	auto output1 = nn.AddOperation(MatrixMultiplication(hidden2, weight3));
 
     return 0;

@@ -2,9 +2,9 @@
 #include <vector>
 #include <assert.h>
 
-#include <cudnn.h>
-#include <cublas_v2.h>
-#include <curand.h>
+//#include <cudnn.h>
+//#include <cublas_v2.h>
+//#include <curand.h>
 
 /*
 TOTO:
@@ -54,175 +54,145 @@ the same, the operation changes.
 
 struct Param4D
 {
-	uint32_t width;
 	uint32_t height;
+	uint32_t width;
 	uint32_t channels;
 	uint32_t batches;
 
-	Param4D(uint32_t width = 1, uint32_t height = 1, uint32_t channels = 1, uint32_t batches = 1)
+	Param4D(uint32_t height = 1, uint32_t width = 1, uint32_t channels = 1, uint32_t batches = 1)
 	{
-		assert(width > 0 && height > 0 && channels > 0 && batches > 0);
-		this->width = width;
+		assert(height > 0 && width > 0 && channels > 0 && batches > 0);
 		this->height = height;
+		this->width = width;
 		this->channels = channels;
 		this->batches = batches;
+	}
+
+	Param4D(const Param4D* other)
+	{
+		this->height = other->height;
+		this->width = other->width;
+		this->channels = other->channels;
+		this->batches = other->batches;
+	}
+
+	bool operator==(const Param4D& other) const
+	{
+		return height == other.height && width == other.width && channels == other.channels && batches == other.batches;
 	}
 
 	uint32_t size() const
 	{
 		return width * height * channels * batches;
 	}
+
+	Param4D* Reshape(Param4D param) const
+	{
+		assert(param.size() == size());
+		Param4D* parameter = new Param4D(param);
+		return parameter;
+	}
+
+	void Print() const
+	{
+		printf("(%u, %u, %u, %u)\n", height, width, channels, batches);
+	}
 };
 
-/*
-cublasGemmStridedBatchedEx
-	(
-		cublasHandle(H), CUBLAS_OP_N(opP), CUBLAS_OP_T(opP),
-		TENSOR_QUERY_DIMENTION(P), TENSOR_OUTPUT_AREA(P), OUTPUT_CHANNELS(P),
-		&alpha(H),
-		gpuTensorQueryWeights(opP), CUDA_R_16F(P), TENSOR_QUERY_DIMENTION(P), TENSOR_QUERY_WEIGHTS_SIZE(P),
-		gpuTensorReluOutput(opP), CUDA_R_32F(P), TENSOR_OUTPUT_AREA(P), TENSOR_OUTPUT_SIZE(P),
-		&beta(H),
-		gpuTensorQueries(opP), CUDA_R_32F(P), TENSOR_QUERY_DIMENTION(P), TENSOR_QUERIES_SIZE(P),
-		BATCH_SIZE(P), CUDA_R_32F(P), CUBLAS_GEMM_DEFAULT_TENSOR_OP(H)
-	);
-*/
+struct Param2D
+{
+	uint32_t height;
+	uint32_t width;
+
+	Param2D(uint32_t height = 1, uint32_t width = 1)
+	{
+		assert(height >= 0 && width >= 0);
+		this->height = height;
+		this->width = width;
+	}
+};
 
 struct Operation
 {
-	uint32_t outputSize;
-	float* outputArr;
-	float* gradientArr;
-	Operation* inputOperation;
-
-	virtual ~Operation() = default;
-	virtual void Forward() = 0;
-	virtual void Backward() = 0;
+	Param4D* outputParam;
 };
 
-struct Input : Operation
+struct MatrixMultiplication : Operation
 {
-	Input(uint32_t size)
-	{
-		assert(size > 0);
+	Param4D* inputParam1;
+	Param4D* inputParam2;
 
-		this->outputSize = size;
-		this->outputArr = new float[size];
-		this->gradientArr = new float[size];
-		inputOperation = nullptr;
-	}
-
-	void Forward() override
+	MatrixMultiplication(Param4D* inputParam1, Param4D* inputParam2)
 	{
-		printf("Input::Forward\n");
-	}
+		assert(inputParam1 != nullptr);
+		assert(inputParam2 != nullptr);
+		assert(inputParam1->width == inputParam2->height);
+		assert(inputParam1->batches == inputParam2->batches);
 
-	void Backward() override
-	{
-		printf("Input::Backward\n");
+		this->inputParam1 = inputParam1;
+		this->inputParam2 = inputParam2;
+		outputParam = new Param4D(inputParam1->height, inputParam2->width, 1, inputParam1->batches);
 	}
 };
 
-struct Linear : Operation
+struct MatrixAddition : Operation
 {
-	float* weightArr;
+	Param4D* inputParam1;
+	Param4D* inputParam2;
 
-	Linear(Operation* inputOperation, uint32_t outputSize)
+	MatrixAddition(Param4D* inputParam1, Param4D* inputParam2)
 	{
-		assert(inputOperation != nullptr);
-		assert(outputSize > 0);
+		assert(inputParam1 != nullptr);
+		assert(inputParam2 != nullptr);
+		assert(*inputParam1 == *inputParam2);
 
-		this->outputSize = outputSize;
-		this->outputArr = new float[outputSize];
-		this->gradientArr = new float[outputSize];
-		inputOperation = inputOperation;
-	}
-
-	void Forward() override
-	{
-		printf("Linear::Forward\n");
-	}
-
-	void Backward() override
-	{
-		printf("Linear::Backward\n");
+		this->inputParam1 = inputParam1;
+		this->inputParam2 = inputParam2;
+		outputParam = new Param4D(inputParam1);
 	}
 };
 
 struct Convolution : Operation
 {
-	Param3D inputParam;
-	Param3D outputParam;
+	Param4D* inputParam;
 	Param2D kernelParam;
 	Param2D paddingParam;
 	Param2D strideParam;
 	Param2D dilationParam;
 
-	Convolution(Operation* inputOperation, Param3D inputParam, Param3D outputParam, Param2D kernelParam, Param2D paddingParam, Param2D strideParam, Param2D dilationParam)
+	Convolution(Param4D* inputParam, Param4D outputParam, Param2D kernelParam, Param2D paddingParam, Param2D strideParam, Param2D dilationParam)
 	{
-		assert(inputOperation != nullptr);
-		assert(inputParam.channels > 0 && inputParam.height > 0 && inputParam.width > 0);
-		assert(outputParam.channels > 0 && outputParam.height > 0 && outputParam.width > 0);
-		assert(inputOperation->outputSize == inputParam.channels * inputParam.height * inputParam.width);
+		assert(inputParam != nullptr);
+		assert(inputParam->batches == outputParam.batches);
 		assert(kernelParam.height > 0 && kernelParam.width > 0);
-		assert(paddingParam.height >= 0 && paddingParam.width >= 0);
 		assert(strideParam.height > 0 && strideParam.width > 0);
-		assert(dilationParam.height >= 0 && dilationParam.width >= 0);
-		assert((inputParam.height + 2 * paddingParam.height - dilationParam.height * (kernelParam.height - 1) - 1) % strideParam.height == 0);
-		assert((inputParam.width + 2 * paddingParam.width - dilationParam.width * (kernelParam.width - 1) - 1) % strideParam.width == 0);
+		assert(float(inputParam->height + 2 * paddingParam.height - dilationParam.height * (kernelParam.height - 1) - 1) / strideParam.height + 1 == outputParam.height);
+		assert(float(inputParam->width + 2 * paddingParam.width - dilationParam.width * (kernelParam.width - 1) - 1) / strideParam.width + 1 == outputParam.width);
 
 		this->inputParam = inputParam;
-		this->outputParam = outputParam;
+		this->outputParam = new Param4D(outputParam);
 		this->kernelParam = kernelParam;
 		this->paddingParam = paddingParam;
 		this->strideParam = strideParam;
 		this->dilationParam = dilationParam;
-
-		outputSize = outputParam.channels * outputParam.height * outputParam.width;
-		this->outputArr = new float[outputSize];
-		this->gradientArr = new float[outputSize];
-		inputOperation = inputOperation;
-	}
-
-	void Forward() override
-	{
-		printf("Convolution::Forward\n");
-	}
-
-	void Backward() override
-	{
-		printf("Convolution::Backward\n");
 	}
 };
 
 struct ReLU : Operation
 {
-	ReLU(Operation* inputOperation)
-	{
-		assert(inputOperation != nullptr);
-		this->outputSize = inputOperation->outputSize;
-		this->outputArr = new float[outputSize];
-		this->gradientArr = new float[outputSize];
-		inputOperation = inputOperation;
-	}
+	Param4D* inputParam;
 
-	void Forward() override
+	ReLU(Param4D* inputParam)
 	{
-		printf("ReLU::Forward\n");
-	}
-
-	void Backward() override
-	{
-		printf("ReLU::Backward\n");
+		assert(inputParam != nullptr);
+		this->inputParam = inputParam;
+		outputParam = new Param4D(inputParam);
 	}
 };
 
 struct NeuralNetwork
 {
-	cublasHandle_t cublasHandle;
-	cudnnHandle_t cudnnHandle;
-	curandGenerator_t curandGenerator;
-
+	std::vector<Param4D*> parameters;
 	std::vector<Param4D*> userInputs;
 	std::vector<Param4D*> networkInputs;
 	std::vector<Param4D*> userOutputs;
@@ -230,104 +200,73 @@ struct NeuralNetwork
 
 	std::vector<Operation*> operations;
 
-	NeuralNetwork()
+	~NeuralNetwork()
 	{
-		cublasCreate(&cublasHandle);
-		cudnnCreate(&cudnnHandle);
-		curandCreateGenerator(&curandGenerator, CURAND_RNG_PSEUDO_DEFAULT);
-		curandSetPseudoRandomGeneratorSeed(curandGenerator, 1337ULL);
+		for (Param4D* parameter : parameters)
+			delete parameter;
+		for (Param4D* parameter : userInputs)
+			delete parameter;
+		for (Param4D* parameter : networkInputs)
+			delete parameter;
+		for (Param4D* parameter : userOutputs)
+			delete parameter;
+		for (Param4D* parameter : networkOutputs)
+			delete parameter;
+		for (Operation* operation : operations)
+			delete operation;
 	}
 
-	Param4D* ParameterInput(Param4D* param)
+	Param4D* ParameterInput(Param4D param)
 	{
-		return param;
+		Param4D* parameter = new Param4D(param);
+		parameters.emplace_back(parameter);
+		return parameter;
 	}
 
-	Param4D* UserInput(Param4D* param)
+	Param4D* UserInput(Param4D param)
 	{
-		userInputs.emplace_back(param);
-		return param;
+		Param4D* parameter = new Param4D(param);
+		userInputs.emplace_back(parameter);
+		return parameter;
 	}
 
-	Operation* AddOperation(Operation* operation)
+	Param4D* NetworkInput(Param4D param)
 	{
-		assert(operation != nullptr);
+		Param4D* parameter = new Param4D(param);
+		networkInputs.emplace_back(parameter);
+		return parameter;
+	}
+
+	Param4D* AddOperation(Operation op)
+	{
+		Operation* operation = new Operation(op);
 		operations.emplace_back(operation);
-		return operation;
-	}
-
-	Operation* AddOutput(Operation* operation)
-	{
-		assert(operation != nullptr);
-		outputs.emplace_back(operation);
-		operations.emplace_back(operation);
-		return operation;
-	}
-
-	void ProvideInput(uint32_t idx, float* input)
-	{
-		assert(idx < inputs.size());
-		assert(input != nullptr);
-		memcpy(inputs[idx]->outputArr, input, inputs[idx]->outputSize * sizeof(float));
-	}
-
-	void ObtainOutput(uint32_t idx, float* output)
-	{
-		assert(idx < outputs.size());
-		assert(output != nullptr);
-		memcpy(output, outputs[idx]->outputArr, outputs[idx]->outputSize * sizeof(float));
-	}
-
-	void ObtainInputGradient(uint32_t idx, float* gradient)
-	{
-		assert(idx < outputs.size());
-		assert(gradient != nullptr);
-		memcpy(gradient, inputs[idx]->gradientArr, inputs[idx]->outputSize * sizeof(float));
-	}
-
-	void ProvideOutputGradient(uint32_t idx, float* gradient)
-	{
-		assert(idx < outputs.size());
-		assert(gradient != nullptr);
-		memcpy(outputs[idx]->gradientArr, gradient, outputs[idx]->outputSize * sizeof(float));
-	}
-
-	void Forward()
-	{
-		for (auto operation : operations)
-			operation->Forward();
-		printf("\n");
-	}
-
-	void Backward()
-	{
-		for (auto operation = operations.rbegin(); operation != operations.rend(); ++operation)
-			(*operation)->Backward();
-		printf("\n");
+		return operation->outputParam;
 	}
 };
 
 int main()
 {
 	NeuralNetwork nn;
-	auto input1 = nn.ParameterInput(new ParameterInput(64 * 64));
-	auto conv1 = nn.AddOperation(new Convolution(input1, { 1, 64, 64 }, { 1, 32, 32 }, { 2, 2 }, { 0, 0 }, { 2, 2 }, { 1, 1 }));
-	auto relu1 = nn.AddOperation(new ReLU(conv1));
-	auto conv2 = nn.AddOperation(new Convolution(conv1, { 1, 32, 32 }, { 1, 8, 8 }, { 4, 4 }, { 0, 0 }, { 4, 4 }, { 1, 1 }));
-	auto relu2 = nn.AddOperation(new ReLU(conv2));
-	auto hidden1 = nn.AddOperation(new Linear(conv2, 64));
-	auto relu3 = nn.AddOperation(new ReLU(hidden1));
-	auto hidden2 = nn.AddOperation(new Linear(hidden1, 64));
-	auto relu4 = nn.AddOperation(new ReLU(hidden2));
-	auto output1 = nn.AddOutput(new Linear(hidden2, 2));
 
-	float input[64 * 64];
-	float output[2];
+	auto input1 = nn.UserInput(Param4D(64, 64));
+	auto conv1 = nn.AddOperation(Convolution(input1, Param4D(32, 32), Param2D(2, 2), Param2D(0, 0), Param2D(2, 2), Param2D(1, 1)));
+	auto relu1 = nn.AddOperation(ReLU(conv1));
 
-	nn.ProvideInput(0, input);
-	nn.Forward();
-	nn.ObtainOutput(0, output);
-	nn.Backward();
+	auto conv2 = nn.AddOperation(Convolution(conv1, Param4D(8, 8), Param2D(4, 4), Param2D(0, 0), Param2D(4, 4), Param2D(1, 1)));
+	auto relu2 = nn.AddOperation(ReLU(conv2));
+
+	auto flatten1 = relu2->Reshape(Param4D(1, 64));
+	auto weight1 = nn.ParameterInput(Param4D(64, 64));
+	auto hidden1 = nn.AddOperation(MatrixMultiplication(flatten1, weight1));
+	auto relu3 = nn.AddOperation(ReLU(hidden1));
+
+	auto weight2 = nn.ParameterInput(Param4D(64, 64));
+	auto hidden2 = nn.AddOperation(MatrixMultiplication(hidden1, weight2));
+	auto relu4 = nn.AddOperation(ReLU(hidden2));
+
+	auto weight3 = nn.ParameterInput(Param4D(64, 2));
+	auto output1 = nn.AddOperation(MatrixMultiplication(hidden2, weight3));
 
     return 0;
 }

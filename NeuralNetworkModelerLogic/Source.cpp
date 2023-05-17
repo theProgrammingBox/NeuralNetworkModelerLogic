@@ -2,8 +2,6 @@
 #include <vector>
 #include <assert.h>
 
-const uint32_t UNDECIDED = UINT32_MAX;
-
 /*
 Description:
 - This is a neural network modeler that allows the user to create a neural network.
@@ -12,11 +10,6 @@ operations used in the neural network. Would you like the network to output its 
 weights for the next convolution? You can do that. Would you like mix different data
 types and layouts? You can do that.
 - TLDR: A project that allows the user to create a neural network at a very low level.
-*/
-
-/*
-WARNING:
-- UNDECIDED = UINT32_MAX, so you can't use UINT32_MAX as a dimention in the neural network
 */
 
 /*
@@ -47,6 +40,7 @@ Thought Organization:
 (cudnn and cublas types like CUDNN_DATA_FLOAT, CUDNN_DATA_HALF, CUDA_R_32F, CUDA_R_16F)
 */
 
+/*
 struct Param4D
 {
 	uint32_t height;
@@ -270,4 +264,55 @@ int main()
 	auto output1 = nn.AddOperation(MatrixMultiplication(hidden2, weight3));
 
     return 0;
+}
+*/
+
+struct temp
+{
+	
+};
+
+struct NeuralNetwork
+{
+	uint32_t parameterSize;
+	uint32_t workspaceSize;
+	std::vector<temp> operations;
+
+	NeuralNetwork()
+	{
+		parameterSize = 0;
+		workspaceSize = 0;
+	}
+
+	uint32_t AddParameter(uint32_t size)
+	{
+		parameterSize += size;
+		return parameterSize - size;
+	}
+
+	uint32_t AddWorkspace(uint32_t size)
+	{
+		workspaceSize += size;
+		return UINT32_MAX + 1 - workspaceSize;
+	}
+};
+
+int main()
+{
+	NeuralNetwork nn;
+	
+	uint32_t weight = nn.AddParameter(4);
+	uint32_t input = nn.AddWorkspace(4);
+	uint32_t weight2 = nn.AddParameter(7);
+	uint32_t input2 = nn.AddWorkspace(9);
+	uint32_t weight3 = nn.AddParameter(1);
+	uint32_t input3 = nn.AddWorkspace(1);
+
+	printf("weight: %u\n", weight);
+	printf("input: %u\n", nn.workspaceSize + input);
+	printf("weight2: %u\n", weight2);
+	printf("input2: %u\n", nn.workspaceSize + input2);
+	printf("weight3: %u\n", weight3);
+	printf("input3: %u\n", nn.workspaceSize + input3);
+	return 0;
 }

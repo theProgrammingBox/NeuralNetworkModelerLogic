@@ -269,11 +269,10 @@ int main()
 
 struct ParameterDetails
 {
-	bool doReference;
 	uint32_t size;
-	float* tmp;
+	float* arr;
 
-	ParameterDetails(bool doReference, uint32_t size) : doReference(doReference), size(size) {}
+	ParameterDetails(uint32_t size) : size(size) {}
 };
 
 struct OperationDetails
@@ -295,26 +294,74 @@ struct Operation
 	float* inputParam1;
 	float* inputParam2;
 	float* outputParam;
+
+	void Forward()
+	{
+		*outputParam = *inputParam1 + *inputParam2;
+	}
 };
 
 struct NeuralNetwork
 {
 	std::vector<Operation> operations;
+	std::vector<float*> inputs;
+	std::vector<float*> outputs;
+
+	~NeuralNetwork()
+	{
+		for (Operation operation : operations)
+		{
+			delete[] operation.inputParam1;
+			delete[] operation.inputParam2;
+			delete[] operation.outputParam;
+		}
+	}
+
+	void Forward()
+	{
+		for (Operation operation : operations)
+		{
+			operation.Forward();
+		}
+	}
 };
 
 struct Modeler
 {
-	std::vector<ParameterDetails> parameters;
+	std::vector<ParameterDetails*> dynamicParameters;
+	std::vector<ParameterDetails*> constantParameters;
+	std::vector<ParameterDetails*> inputParameters;
+	std::vector<ParameterDetails*> outputParameters;
 	std::vector<OperationDetails> operations;
 
-	Modeler()
+	~Modeler()
 	{
+		for (ParameterDetails* parameter : dynamicParameters)
+			delete parameter;
+		for (ParameterDetails* parameter : constantParameters)
+			delete parameter;
 	}
 
-	ParameterDetails* AddParameter(ParameterDetails parameter)
+	ParameterDetails* AddDynamicParameter(ParameterDetails* parameter)
 	{
-		parameters.emplace_back(parameter);
-		return &parameters.back();
+		dynamicParameters.emplace_back(parameter);
+		return parameter;
+	}
+
+	ParameterDetails* AddConstantParameter(ParameterDetails* parameter)
+	{
+		constantParameters.emplace_back(parameter);
+		return parameter;
+	}
+
+	void HintInput(ParameterDetails* parameter)
+	{
+		inputParameters.emplace_back(parameter);
+	}
+
+	void HintOutput(ParameterDetails* parameter)
+	{
+		outputParameters.emplace_back(parameter);
 	}
 
 	void AddOperation(OperationDetails operation)
@@ -324,51 +371,70 @@ struct Modeler
 
 	void Initialize()
 	{
-		for (ParameterDetails parameter : parameters)
+		for (ParameterDetails* parameter : constantParameters)
 		{
-			if (parameter.doReference)
-			{
-				parameter.tmp = new float[parameter.size];
-				for (uint32_t i = 0; i < parameter.size; i++)
-					parameter.tmp[i] = i;
-			}
+			parameter->arr = new float[parameter->size];
+			for (uint32_t i = 0; i < parameter->size; i++)
+				parameter->arr[i] = i;
 		}
 	}
 
 	NeuralNetwork Instance()
 	{
+		for (ParameterDetails* parameter : dynamicParameters)
+			parameter->arr = new float[parameter->size];
+		
 		NeuralNetwork nn;
-		for (ParameterDetails parameter : parameters)
-		{
-			if (!parameter.doReference)
-			{
-				parameter.tmp = new float[parameter.size];
-			}
-		}
+
+		for (ParameterDetails* parameter : inputParameters)
+			nn.inputs.emplace_back(parameter->arr);
+
+		for (ParameterDetails* parameter : outputParameters)
+			nn.outputs.emplace_back(parameter->arr);
+		
 		for (OperationDetails operation : operations)
 		{
 			Operation op;
-			op.inputParam1 = operation.inputParam1->tmp;
-			op.inputParam2 = operation.inputParam2->tmp;
-			op.outputParam = operation.outputParam->tmp;
+			op.inputParam1 = operation.inputParam1->arr;
+			op.inputParam2 = operation.inputParam2->arr;
+			op.outputParam = operation.outputParam->arr;
 			nn.operations.emplace_back(op);
 		}
 		return nn;
 	}
 };
 
+// weights are constant params
+// user inputs and operation outputs are dynamic params params
+// dynamic params are dependent on other dynamic params and/or constant params
+// constant params are not dependent on any other params
+// we can use compile to determin if constant or dynamic
+
 int main()
 {
-	Modeler modeler;
+	float* arr = new float[1];
+	float* a = arr;
+	float* b = arr;
+
+	delete[] a;
+	delete[] b;
+	/*Modeler modeler;
 	
-	ParameterDetails* input = modeler.AddParameter(ParameterDetails(true, 1));
-	ParameterDetails* kernel = modeler.AddParameter(ParameterDetails(false, 1));
-	ParameterDetails* output = modeler.AddParameter(ParameterDetails(true, 1));
+	ParameterDetails* input = modeler.AddDynamicParameter(new ParameterDetails(1));
+	ParameterDetails* kernel = modeler.AddConstantParameter(new ParameterDetails(1));
+	ParameterDetails* output = modeler.AddDynamicParameter(new ParameterDetails(1));
+
+	modeler.HintInput(input);
+	modeler.HintOutput(output);
 	
 	modeler.AddOperation(OperationDetails(input, kernel, output));
 	modeler.Initialize();
 	
 	NeuralNetwork neuralNetwork = modeler.Instance();
+
+	neuralNetwork.inputs[0][0] = 1;
+	neuralNetwork.Forward();
+	printf("%f\n", neuralNetwork.outputs[0][0]);*/
 	
 	return 0;
 }

@@ -383,7 +383,10 @@ struct Modeler
 		{
 			parameter->arr = new float[parameter->size];
 			for (uint32_t i = 0; i < parameter->size; i++)
-				parameter->arr[i] = i;
+			{
+				printf("new constant arr address: %p\n", parameter->arr);
+				parameter->arr[i] = 11;
+			}
 		}
 	}
 
@@ -421,7 +424,9 @@ struct Modeler
 // constant params are not dependent on any other params
 // we can use compile to determin if constant or dynamic
 
-// vector for user, fixed size array afterwards for speed
+//working on: vector for user, fixed size array afterwards for speed
+
+// for debugging, log all addresses and remove them once deleted. if deleting a non existant address or if we end up with leftover addresses, we have a double deletion/memory leak
 
 int main()
 {
@@ -437,12 +442,24 @@ int main()
 	modeler.AddOperation(OperationDetails(input, kernel, output));
 	modeler.Initialize();
 	
-	NeuralNetwork neuralNetwork;
-	modeler.Instance(&neuralNetwork);
+	std::vector<NeuralNetwork*> neuralNetworks;
+	for (uint8_t i = 10; i--;)
+	{
+		printf("new Neural Network address: %p\n", neuralNetworks);
+		NeuralNetwork* neuralNetwork = new NeuralNetwork();
+		neuralNetworks.emplace_back(neuralNetwork);
+		modeler.Instance(neuralNetwork);
 
-	neuralNetwork.inputs[0][0] = 1;
-	neuralNetwork.Forward();
-	printf("%f\n", neuralNetwork.outputs[0][0]);
+		neuralNetwork->inputs[0][0] = -i;
+		neuralNetwork->Forward();
+		printf("%f\n", neuralNetwork->outputs[0][0]);
+	}
+	
+	for (NeuralNetwork* neuralNetwork : neuralNetworks)
+	{
+		printf("delete Neural Network address: %p\n", neuralNetwork);
+		delete neuralNetwork;
+	}
 	
 	return 0;
 }

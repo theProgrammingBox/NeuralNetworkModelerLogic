@@ -267,52 +267,65 @@ int main()
 }
 */
 
-struct temp
+struct Parameter
 {
-	
+	bool doReference;
+	uint32_t size;
+
+	Parameter(bool doReference, uint32_t size) : doReference(doReference), size(size) {}
+};
+
+struct Operation
+{
+	Operation(Parameter* inputParam1, Parameter* inputParam2, Parameter* outputParam)
+	{
+		this->inputParam1 = inputParam1;
+		this->inputParam2 = inputParam2;
+		this->outputParam = outputParam;
+	}
+
+	Parameter* inputParam1;
+	Parameter* inputParam2;
+	Parameter* outputParam;
+};
+
+struct Modeler
+{
+	std::vector<Parameter*> parameters;
+	std::vector<Operation*> operations;
+
+	Modeler()
+	{
+	}
+
+	Parameter* AddParam(Parameter* parameter)
+	{
+		parameters.emplace_back(parameter);
+		return parameter;
+	}
+
+	void AddOp(Operation* operation)
+	{
+		operations.emplace_back(operation);
+	}
 };
 
 struct NeuralNetwork
 {
-	uint32_t parameterSize;
-	uint32_t workspaceSize;
-	std::vector<temp> operations;
-
-	NeuralNetwork()
-	{
-		parameterSize = 0;
-		workspaceSize = 0;
-	}
-
-	uint32_t AddParameter(uint32_t size)
-	{
-		parameterSize += size;
-		return parameterSize - size;
-	}
-
-	uint32_t AddWorkspace(uint32_t size)
-	{
-		workspaceSize += size;
-		return UINT32_MAX + 1 - workspaceSize;
-	}
+	
 };
 
 int main()
 {
-	NeuralNetwork nn;
+	Modeler modeler;
 	
-	uint32_t weight = nn.AddParameter(4);
-	uint32_t input = nn.AddWorkspace(4);
-	uint32_t weight2 = nn.AddParameter(7);
-	uint32_t input2 = nn.AddWorkspace(9);
-	uint32_t weight3 = nn.AddParameter(1);
-	uint32_t input3 = nn.AddWorkspace(1);
-
-	printf("weight: %u\n", weight);
-	printf("input: %u\n", nn.workspaceSize + input);
-	printf("weight2: %u\n", weight2);
-	printf("input2: %u\n", nn.workspaceSize + input2);
-	printf("weight3: %u\n", weight3);
-	printf("input3: %u\n", nn.workspaceSize + input3);
+	Parameter* input = modeler.AddParam(new Parameter(true, 16));
+	Parameter* kernel = modeler.AddParam(new Parameter(false, 16));
+	Parameter* output = modeler.AddParam(new Parameter(true, 1));
+	
+	modeler.AddOp(new Operation(input, kernel, output));
+	
+	NeuralNetwork nn2 = nn;
+	
 	return 0;
 }

@@ -303,53 +303,61 @@ struct Operation
 
 struct NeuralNetwork
 {
-	std::vector<Operation> operations;
-	std::vector<float*> inputs;
-	std::vector<float*> outputs;
+	std::vector<float*> dynamicParameters;	// soley for the deconstructor, the constant parameters are dealt with by the modeler
+	std::vector<float*> inputs;				// soley for user inputs
+	std::vector<float*> outputs;			// soley for user outputs
+	std::vector<Operation> operations;		// just run them in order
 
 	~NeuralNetwork()
 	{
-		for (Operation operation : operations)
+		for (float* arr : dynamicParameters)
 		{
-			delete[] operation.inputParam1;
-			delete[] operation.inputParam2;
-			delete[] operation.outputParam;
+			printf("delete dynamic arr address: %p\n", arr);
+			delete[] arr;
 		}
 	}
 
 	void Forward()
 	{
 		for (Operation operation : operations)
-		{
 			operation.Forward();
-		}
 	}
 };
 
 struct Modeler
 {
-	std::vector<ParameterDetails*> dynamicParameters;
-	std::vector<ParameterDetails*> constantParameters;
-	std::vector<ParameterDetails*> inputParameters;
-	std::vector<ParameterDetails*> outputParameters;
-	std::vector<OperationDetails> operations;
+	std::vector<ParameterDetails*> dynamicParameters;	// stores all dynamic parameters, arrs that depends on something like user inputs
+	std::vector<ParameterDetails*> constantParameters;	// stores all constant parameters, arrs that do not depend on anything like weights
+	std::vector<ParameterDetails*> inputParameters;		// stores all dynamic parameters that are the user is expected to alter
+	std::vector<ParameterDetails*> outputParameters;	// stores all dynamic parameters that are the user is expected to read
+	std::vector<OperationDetails> operationDetails;		// stores all operationDetails
 
 	~Modeler()
 	{
 		for (ParameterDetails* parameter : dynamicParameters)
-			delete parameter;
+		{
+			printf("delete dynamic Parameters address: %p\n", parameter);
+			delete parameter;			// delete the parameter pointer so user does not have to
+		}
 		for (ParameterDetails* parameter : constantParameters)
-			delete parameter;
+		{
+			printf("delete constant arr address: %p\n", parameter->arr);
+			printf("delete constant parameter address: %p\n", parameter);
+			delete[] parameter->arr;	// delete the constant array as its location is fixed accross all instances
+			delete parameter;			// delete the parameter pointer so user does not have to
+		}
 	}
 
 	ParameterDetails* AddDynamicParameter(ParameterDetails* parameter)
 	{
+		printf("new Dynamic Parameter address: %p\n", parameter);
 		dynamicParameters.emplace_back(parameter);
 		return parameter;
 	}
 
 	ParameterDetails* AddConstantParameter(ParameterDetails* parameter)
 	{
+		printf("new Constant Parameter address: %p\n", parameter);
 		constantParameters.emplace_back(parameter);
 		return parameter;
 	}
@@ -366,7 +374,7 @@ struct Modeler
 
 	void AddOperation(OperationDetails operation)
 	{
-		operations.emplace_back(operation);
+		operationDetails.emplace_back(operation);
 	}
 
 	void Initialize()
@@ -379,28 +387,31 @@ struct Modeler
 		}
 	}
 
-	NeuralNetwork Instance()
+	void Instance(NeuralNetwork* nn)
 	{
 		for (ParameterDetails* parameter : dynamicParameters)
+		{
 			parameter->arr = new float[parameter->size];
-		
-		NeuralNetwork nn;
+			printf("new dynamic array address: %p\n", parameter->arr);
+		}
+
+		for (ParameterDetails* parameter : dynamicParameters)
+			nn->dynamicParameters.emplace_back(parameter->arr);
 
 		for (ParameterDetails* parameter : inputParameters)
-			nn.inputs.emplace_back(parameter->arr);
+			nn->inputs.emplace_back(parameter->arr);
 
 		for (ParameterDetails* parameter : outputParameters)
-			nn.outputs.emplace_back(parameter->arr);
+			nn->outputs.emplace_back(parameter->arr);
 		
-		for (OperationDetails operation : operations)
+		for (OperationDetails operationDetail : operationDetails)
 		{
 			Operation op;
-			op.inputParam1 = operation.inputParam1->arr;
-			op.inputParam2 = operation.inputParam2->arr;
-			op.outputParam = operation.outputParam->arr;
-			nn.operations.emplace_back(op);
+			op.inputParam1 = operationDetail.inputParam1->arr;
+			op.inputParam2 = operationDetail.inputParam2->arr;
+			op.outputParam = operationDetail.outputParam->arr;
+			nn->operations.emplace_back(op);
 		}
-		return nn;
 	}
 };
 
@@ -410,15 +421,11 @@ struct Modeler
 // constant params are not dependent on any other params
 // we can use compile to determin if constant or dynamic
 
+// vector for user, fixed size array afterwards for speed
+
 int main()
 {
-	float* arr = new float[1];
-	float* a = arr;
-	float* b = arr;
-
-	delete[] a;
-	delete[] b;
-	/*Modeler modeler;
+	Modeler modeler;
 	
 	ParameterDetails* input = modeler.AddDynamicParameter(new ParameterDetails(1));
 	ParameterDetails* kernel = modeler.AddConstantParameter(new ParameterDetails(1));
@@ -430,11 +437,12 @@ int main()
 	modeler.AddOperation(OperationDetails(input, kernel, output));
 	modeler.Initialize();
 	
-	NeuralNetwork neuralNetwork = modeler.Instance();
+	NeuralNetwork neuralNetwork;
+	modeler.Instance(&neuralNetwork);
 
 	neuralNetwork.inputs[0][0] = 1;
 	neuralNetwork.Forward();
-	printf("%f\n", neuralNetwork.outputs[0][0]);*/
+	printf("%f\n", neuralNetwork.outputs[0][0]);
 	
 	return 0;
 }

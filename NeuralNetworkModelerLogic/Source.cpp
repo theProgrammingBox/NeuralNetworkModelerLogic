@@ -267,65 +267,108 @@ int main()
 }
 */
 
-struct Parameter
+struct ParameterDetails
 {
 	bool doReference;
 	uint32_t size;
+	float* tmp;
 
-	Parameter(bool doReference, uint32_t size) : doReference(doReference), size(size) {}
+	ParameterDetails(bool doReference, uint32_t size) : doReference(doReference), size(size) {}
 };
 
-struct Operation
+struct OperationDetails
 {
-	Operation(Parameter* inputParam1, Parameter* inputParam2, Parameter* outputParam)
+	OperationDetails(ParameterDetails* inputParam1, ParameterDetails* inputParam2, ParameterDetails* outputParam)
 	{
 		this->inputParam1 = inputParam1;
 		this->inputParam2 = inputParam2;
 		this->outputParam = outputParam;
 	}
 
-	Parameter* inputParam1;
-	Parameter* inputParam2;
-	Parameter* outputParam;
+	ParameterDetails* inputParam1;
+	ParameterDetails* inputParam2;
+	ParameterDetails* outputParam;
+};
+
+struct Operation
+{
+	float* inputParam1;
+	float* inputParam2;
+	float* outputParam;
+};
+
+struct NeuralNetwork
+{
+	std::vector<Operation> operations;
 };
 
 struct Modeler
 {
-	std::vector<Parameter*> parameters;
-	std::vector<Operation*> operations;
+	std::vector<ParameterDetails> parameters;
+	std::vector<OperationDetails> operations;
 
 	Modeler()
 	{
 	}
 
-	Parameter* AddParam(Parameter* parameter)
+	ParameterDetails* AddParameter(ParameterDetails parameter)
 	{
 		parameters.emplace_back(parameter);
-		return parameter;
+		return &parameters.back();
 	}
 
-	void AddOp(Operation* operation)
+	void AddOperation(OperationDetails operation)
 	{
 		operations.emplace_back(operation);
 	}
-};
 
-struct NeuralNetwork
-{
-	
+	void Initialize()
+	{
+		for (ParameterDetails parameter : parameters)
+		{
+			if (parameter.doReference)
+			{
+				parameter.tmp = new float[parameter.size];
+				for (uint32_t i = 0; i < parameter.size; i++)
+					parameter.tmp[i] = i;
+			}
+		}
+	}
+
+	NeuralNetwork Instance()
+	{
+		NeuralNetwork nn;
+		for (ParameterDetails parameter : parameters)
+		{
+			if (!parameter.doReference)
+			{
+				parameter.tmp = new float[parameter.size];
+			}
+		}
+		for (OperationDetails operation : operations)
+		{
+			Operation op;
+			op.inputParam1 = operation.inputParam1->tmp;
+			op.inputParam2 = operation.inputParam2->tmp;
+			op.outputParam = operation.outputParam->tmp;
+			nn.operations.emplace_back(op);
+		}
+		return nn;
+	}
 };
 
 int main()
 {
 	Modeler modeler;
 	
-	Parameter* input = modeler.AddParam(new Parameter(true, 16));
-	Parameter* kernel = modeler.AddParam(new Parameter(false, 16));
-	Parameter* output = modeler.AddParam(new Parameter(true, 1));
+	ParameterDetails* input = modeler.AddParameter(ParameterDetails(true, 1));
+	ParameterDetails* kernel = modeler.AddParameter(ParameterDetails(false, 1));
+	ParameterDetails* output = modeler.AddParameter(ParameterDetails(true, 1));
 	
-	modeler.AddOp(new Operation(input, kernel, output));
+	modeler.AddOperation(OperationDetails(input, kernel, output));
+	modeler.Initialize();
 	
-	NeuralNetwork nn2 = nn;
+	NeuralNetwork neuralNetwork = modeler.Instance();
 	
 	return 0;
 }

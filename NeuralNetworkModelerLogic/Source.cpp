@@ -336,6 +336,18 @@ struct NeuralNetwork	// rename to nn instance, nn should be a vector of nn insta
 		for (uint32_t i = 0; i < numOperations; i++)
 			operations[i].Forward();
 	}
+
+	void SetInput(uint32_t index, float* arr)
+	{
+		assert(index < numInputs);
+		memcpy(inputs[index], arr, sizeof(float) * numInputs);
+	}
+
+	void GetOutput(uint32_t index, float* arr)
+	{
+		assert(index < numOutputs);
+		memcpy(arr, outputs[index], sizeof(float) * numOutputs);
+	}
 };
 
 struct Modeler
@@ -463,9 +475,7 @@ struct Modeler
 // constant params are not dependent on any other params
 // we can use compile to determin if constant or dynamic
 
-// working on: vector for user, fixed size array afterwards for speed
-
-// for debugging, log all addresses and remove them once deleted. if deleting a non existant address or if we end up with leftover addresses, we have a double deletion/memory leak
+// working on: for debugging, log all addresses and remove them once deleted. if deleting a non existant address or if we end up with leftover addresses, we have a double deletion/memory leak
 
 int main()
 {
@@ -480,6 +490,9 @@ int main()
 	
 	modeler.AddOperation(OperationDetails(input, kernel, output));
 	modeler.Initialize();
+
+	float inputArr[1];
+	float outputArr[1];
 	
 	std::vector<NeuralNetwork*> neuralNetworks;
 	for (uint8_t i = 10; i--;)
@@ -488,10 +501,12 @@ int main()
 		NeuralNetwork* neuralNetwork = new NeuralNetwork();
 		neuralNetworks.emplace_back(neuralNetwork);
 		modeler.Instance(neuralNetwork);
-
-		neuralNetwork->inputs[0][0] = -i;
+		
+		*inputArr = -i;
+		neuralNetwork->SetInput(0, inputArr);
 		neuralNetwork->Forward();
-		printf("%f\n", neuralNetwork->outputs[0][0]);
+		neuralNetwork->GetOutput(0, outputArr);
+		printf("%f\n", *outputArr);
 	}
 	
 	for (NeuralNetwork* neuralNetwork : neuralNetworks)

@@ -267,15 +267,15 @@ int main()
 }
 */
 
-struct ParameterDetails
+struct ParameterDetails		// rename all to use this naming
 {
 	uint32_t size;
-	float* arr;
+	float* arr;		// find better name
 
 	ParameterDetails(uint32_t size) : size(size) {}
 };
 
-struct OperationDetails
+struct OperationDetails		// rename all to use this naming
 {
 	OperationDetails(ParameterDetails* inputParam1, ParameterDetails* inputParam2, ParameterDetails* outputParam)
 	{
@@ -301,26 +301,40 @@ struct Operation
 	}
 };
 
-struct NeuralNetwork
+struct NeuralNetwork	// rename to nn instance, nn should be a vector of nn instances
 {
-	std::vector<float*> dynamicParameters;	// soley for the deconstructor, the constant parameters are dealt with by the modeler
-	std::vector<float*> inputs;				// soley for user inputs
-	std::vector<float*> outputs;			// soley for user outputs
-	std::vector<Operation> operations;		// just run them in order
+	uint32_t numDynamicParameters;
+	uint32_t numInputs;
+	uint32_t numOutputs;
+	uint32_t numOperations;
+	
+	float** dynamicParameters;	// soley for the deconstructor, the constant parameters are dealt with by the modeler
+	float** inputs;				// soley for user inputs
+	float** outputs;			// soley for user outputs
+	Operation* operations;		// just run them in order
 
 	~NeuralNetwork()
 	{
-		for (float* arr : dynamicParameters)
+		for (uint32_t i = 0; i < numDynamicParameters; i++)
 		{
-			printf("delete dynamic arr address: %p\n", arr);
-			delete[] arr;
+			printf("delete dynamic arr address: %p\n", dynamicParameters[i]);
+			delete[] dynamicParameters[i];
 		}
+		
+		printf("delete dynamic arr address: %p\n", dynamicParameters);
+		printf("delete dynamic arr address: %p\n", inputs);
+		printf("delete dynamic arr address: %p\n", outputs);
+		printf("delete dynamic arr address: %p\n", operations);
+		delete[] dynamicParameters;
+		delete[] inputs;
+		delete[] outputs;
+		delete[] operations;
 	}
 
 	void Forward()
 	{
-		for (Operation operation : operations)
-			operation.Forward();
+		for (uint32_t i = 0; i < numOperations; i++)
+			operations[i].Forward();
 	}
 };
 
@@ -398,23 +412,48 @@ struct Modeler
 			printf("new dynamic array address: %p\n", parameter->arr);
 		}
 
-		for (ParameterDetails* parameter : dynamicParameters)
-			nn->dynamicParameters.emplace_back(parameter->arr);
+		/*for (ParameterDetails* parameter : dynamicParameters)
+			nn->dynamicParameters.emplace_back(parameter->arr);*/
+		nn->numDynamicParameters = dynamicParameters.size();
+		nn->dynamicParameters = new float* [nn->numDynamicParameters];
+		printf("new dynamic array address: %p\n", nn->dynamicParameters);
+		for (uint32_t i = 0; i < nn->numDynamicParameters; i++)
+			nn->dynamicParameters[i] = dynamicParameters[i]->arr;
 
-		for (ParameterDetails* parameter : inputParameters)
-			nn->inputs.emplace_back(parameter->arr);
+		/*for (ParameterDetails* parameter : inputParameters)
+			nn->inputs.emplace_back(parameter->arr);*/
+		nn->numInputs = inputParameters.size();
+		nn->inputs = new float* [nn->numInputs];
+		printf("new dynamic array address: %p\n", nn->inputs);
+		for (uint32_t i = 0; i < nn->numInputs; i++)
+			nn->inputs[i] = inputParameters[i]->arr;
 
-		for (ParameterDetails* parameter : outputParameters)
-			nn->outputs.emplace_back(parameter->arr);
+		/*for (ParameterDetails* parameter : outputParameters)
+			nn->outputs.emplace_back(parameter->arr);*/
+		nn->numOutputs = outputParameters.size();
+		nn->outputs = new float* [nn->numOutputs];
+		printf("new dynamic array address: %p\n", nn->outputs);
+		for (uint32_t i = 0; i < nn->numOutputs; i++)
+			nn->outputs[i] = outputParameters[i]->arr;
 		
-		for (OperationDetails operationDetail : operationDetails)
+		/*for (OperationDetails operationDetail : operationDetails)
 		{
 			Operation op;
 			op.inputParam1 = operationDetail.inputParam1->arr;
 			op.inputParam2 = operationDetail.inputParam2->arr;
 			op.outputParam = operationDetail.outputParam->arr;
 			nn->operations.emplace_back(op);
+		}*/
+		nn->numOperations = operationDetails.size();
+		nn->operations = new Operation[nn->numOperations];
+		printf("new dynamic array address: %p\n", nn->operations);
+		for (uint32_t i = 0; i < nn->numOperations; i++)
+		{
+			nn->operations[i].inputParam1 = operationDetails[i].inputParam1->arr;
+			nn->operations[i].inputParam2 = operationDetails[i].inputParam2->arr;
+			nn->operations[i].outputParam = operationDetails[i].outputParam->arr;
 		}
+		//memcpy(nn->operations, operationDetails.data(), nn->numOperations * sizeof(Operation));
 	}
 };
 
@@ -424,7 +463,7 @@ struct Modeler
 // constant params are not dependent on any other params
 // we can use compile to determin if constant or dynamic
 
-//working on: vector for user, fixed size array afterwards for speed
+// working on: vector for user, fixed size array afterwards for speed
 
 // for debugging, log all addresses and remove them once deleted. if deleting a non existant address or if we end up with leftover addresses, we have a double deletion/memory leak
 

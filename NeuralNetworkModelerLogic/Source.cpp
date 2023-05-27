@@ -90,12 +90,20 @@ int main()
 	auto in = new ExternalInput(input);
 	auto out = new ExternalOutput(output);
 	auto recursive = new RecursiveLink(newHidden, hidden);
+	// concat optimizes by requiring the arrays to be next to each other in memory if possible
+	// (if there is no layout conflict with other nodes)
 	auto concatenate = new Concatenate(hidden, input, concat);
 	auto matmul1 = new MatMul(concat, weight1, product);
 	auto relu1 = new Relu(product, relu);
 	auto matmul2 = new MatMul(relu, weight2, output);
 	auto matmul3 = new MatMul(relu, weight3, presum);
+	// matadd optimizes by not creating a new matrix containing the new sum if possible
+	// (if one of the nodes is not used for further computation, just add to that node)
 	auto matadd = new MatAdd(presum, hidden, newHidden);
+	// auto transpose = new Transpose(temp);
+	// transpose is going to be nessisary for things like attention
+	// the data is going to be stored in non transposed form, but the operations are going to be altered
+	// (matmul has transpose, learn about convolution, and think out others like concat)
 
 	// first vector is all the nodes that we will feed into the pipeline
 	// second vector is all the nodes that we expect to be calculated

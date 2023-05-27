@@ -130,7 +130,6 @@ int main()
 	auto attention = new Tensor();
 	auto attentionWeight = new Tensor();
 	auto attentionOutput = new Tensor();
-	auto attentionOutputWeight = new Tensor();
 
 	auto matmul1 = new MatMul(latent, queryWeight, query);
 	auto matmul2 = new MatMul(latent, keyWeight, key);

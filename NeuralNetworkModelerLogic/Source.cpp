@@ -74,7 +74,7 @@ struct NeuralNetwork
 
 int main()
 {
-	auto input = new Tensor();
+	/*auto input = new Tensor();
 	auto hidden = new Tensor();
 	auto concat = new Tensor();
 	auto weight1 = new Tensor();
@@ -87,8 +87,8 @@ int main()
 	auto newHidden = new Tensor();
 
 	// define external alterations so we can determin the parameter nodes
-	auto in = new ExternalInput(input);
-	auto out = new ExternalOutput(output);
+	// auto in = new ExternalInput(input);
+	// auto out = new ExternalOutput(output);
 	auto recursive = new RecursiveLink(newHidden, hidden);
 	// concat optimizes by requiring the arrays to be next to each other in memory if possible
 	// (if there is no layout conflict with other nodes)
@@ -111,23 +111,35 @@ int main()
 	auto forward = new Pipeline({ input }, { output });
 	auto backward = new Pipeline({ output }, { input });
 
-	auto network = new NeuralNetwork({ forward, backward });
+	auto network = new NeuralNetwork({ forward, backward });*/
 
-	bool isRunning = true;
-	std::vector<Tensor*> inputs;
-	std::vector<Tensor*> outputs;
-	while (isRunning)
-	{
-		network->pipelines[0](inputs, outputs);
-	}
 
-	std::vector<Tensor*> outputGradients;
-	std::vector<Tensor*> inputGradients;
-	do
-	{
-		network->pipelines[1](outputGradients, inputGradients);
-	}
-	while ();
+
+	// attention weights can be optimized into a single matrix, note to compiler
+	auto latent = new Tensor();
+	auto queryWeight = new Tensor();
+	auto keyWeight = new Tensor();
+	auto valueWeight = new Tensor();
+	auto query = new Tensor();
+	auto key = new Tensor();
+	auto keyTranspose = new Tensor();
+	auto value = new Tensor();
+	auto score = new Tensor();
+	// define batches, define reshapes
+	auto softmax = new Tensor();
+	auto attention = new Tensor();
+	auto attentionWeight = new Tensor();
+	auto attentionOutput = new Tensor();
+	auto attentionOutputWeight = new Tensor();
+
+	auto matmul1 = new MatMul(latent, queryWeight, query);
+	auto matmul2 = new MatMul(latent, keyWeight, key);
+	auto matmul3 = new MatMul(latent, valueWeight, value);
+	auto transpose = new Transpose(key, keyTranspose);
+	auto matmul4 = new MatMul(query, keyTranspose, score);
+	auto softmax1 = new Softmax(score, softmax);
+	auto matmul5 = new MatMul(softmax, value, attention);
+	auto matmul6 = new MatMul(attention, attentionWeight, attentionOutput);
 
 	return 0;
 }

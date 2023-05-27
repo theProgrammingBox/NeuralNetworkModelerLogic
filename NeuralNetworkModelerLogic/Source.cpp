@@ -1,4 +1,16 @@
 #include <iostream>
+#include <vector>
+
+/*
+TODO:
+- add connections between nodes when operations are defined
+
+- add a sort of compile, i expect this node given these other nodes (defining input and output)
+- add a sort of compiled backpropagation, black list / white list, idk how its gonna work yet
+
+- New nodes and operations
+-- 
+*/
 
 struct Tensor
 {
@@ -43,6 +55,23 @@ struct MatAdd : Operation
 	}
 };
 
+struct Pipeline
+{
+	Pipeline(std::vector<Tensor*> inputs, std::vector<Tensor*> outputs)
+	{
+	}
+};
+
+struct NeuralNetwork
+{
+	std::vector<Pipeline*> pipelines;
+
+	NeuralNetwork(std::vector<Pipeline*> pipelines)
+	{
+		this->pipelines = pipelines;
+	}
+};
+
 int main()
 {
 	auto input = new Tensor();
@@ -57,6 +86,9 @@ int main()
 	auto presum = new Tensor();
 	auto newHidden = new Tensor();
 
+	// define external alterations so we can determin the parameter nodes
+	auto in = new ExternalInput(input);
+	auto out = new ExternalOutput(output);
 	auto recursive = new RecursiveLink(newHidden, hidden);
 	auto concatenate = new Concatenate(hidden, input, concat);
 	auto matmul1 = new MatMul(concat, weight1, product);
@@ -64,6 +96,30 @@ int main()
 	auto matmul2 = new MatMul(relu, weight2, output);
 	auto matmul3 = new MatMul(relu, weight3, presum);
 	auto matadd = new MatAdd(presum, hidden, newHidden);
+
+	// first vector is all the nodes that we will feed into the pipeline
+	// second vector is all the nodes that we expect to be calculated
+	// all the "leaf" nodes that are not in the first vector are considered constants aka parameters
+	auto forward = new Pipeline({ input }, { output });
+	auto backward = new Pipeline({ output }, { input });
+
+	auto network = new NeuralNetwork({ forward, backward });
+
+	bool isRunning = true;
+	std::vector<Tensor*> inputs;
+	std::vector<Tensor*> outputs;
+	while (isRunning)
+	{
+		network->pipelines[0](inputs, outputs);
+	}
+
+	std::vector<Tensor*> outputGradients;
+	std::vector<Tensor*> inputGradients;
+	do
+	{
+		network->pipelines[1](outputGradients, inputGradients);
+	}
+	while ();
 
 	return 0;
 }

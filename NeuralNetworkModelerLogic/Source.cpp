@@ -2,14 +2,52 @@
 #include <vector>
 
 /*
-TODO:
-- add connections between nodes when operations are defined
+Operations:
+- Matmul
+- Matadd
+- Concatenate
+- Transpose
+- Relu
+- Reshape
+- Softmax
+- Convolution
+*/
 
-- add a sort of compile, i expect this node given these other nodes (defining input and output)
-- add a sort of compiled backpropagation, black list / white list, idk how its gonna work yet
+/*
+Nodes:
+- ExternalInput
+- ExternalOutput
+- RecursiveLink
+- Parameter
+- Intermediate
+*/
 
-- New nodes and operations
--- 
+/*
+Compiler Notes:
+- Transpose
+-- Have a default transpose operation
+-- if matmul is followed by transpose, flip the order of the matmul
+-- if transpose is followed by matmul, set the transpose flag on the matmul
+-- if transpose is followed by transpose, remove the transpose
+
+- Concatenate
+-- Have a default concatenate operation
+-- if it is possible to just have the data next to each other in memory, do that
+
+- MatAdd
+-- Have a default matadd operation
+-- if it is possible to just add to the existing matrix without effecting other operations, do that
+
+- Convolution
+-- Need to know more before I can logic out optimizations tied to all this
+
+- Named Dimension Parameters
+-- Think this out more, should help greatly with the organization of the network
+-- Show the user the named dimension parameters, and allow them to change them
+
+- Reshape
+-- The only thing it does is change the shape of the tensor, data remains the same,
+it just puts a constraint on the named dimension parameters to match the new shape
 */
 
 struct Tensor

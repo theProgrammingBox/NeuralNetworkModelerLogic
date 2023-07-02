@@ -1,509 +1,368 @@
 #include <iostream>
 #include <vector>
-#include <assert.h>
+<<<<<< < HEAD
 
-const float ONEF = 1.0f;
+	const float ONEF = 1.0f;
 const float MINUS_ONEF = -1.0f;
 
 /*
-TOTO:
-- allow more less detailed data layouts 
-- add transpose options to matrix multiplication
-- rework data layout as presented in Thought Organization
-- implement cudnn and cublas operations
-- implement curand random initialization (orthogonal)
-- unit test cuda operations
-
-- Add in gradient arrs
-- unit test backpropagation
-
-- work out multi head attention
-- Add concat
-- Add split
-
-- Add in auto order operations (compile())
+TODO:
 */
 
-/*
-Thought Organization:
-- use NCHW and float by default. work towards other datatypes afterwards
-(NCHW is pixels of the width, H times, C times, N times)
-
-- include data types? including expected operation output data types?
-(cudnn and cublas types like CUDNN_DATA_FLOAT, CUDNN_DATA_HALF, CUDA_R_32F, CUDA_R_16F)
-*/
-
-/*
-struct Param4D
+void cpuSgemmStridedBatched(
+	bool transB, bool transA,
+	int CCols, int CRows, int AColsBRows,
+	const float* alpha,
+	const float* B, int ColsB, int SizeB,
+	const float* A, int ColsA, int SizeA,
+	const float* beta,
+	float* C, int ColsC, int SizeC,
+	int batchCount)
 {
-	uint32_t height;
-	uint32_t width;
-	uint32_t channels;
-	uint32_t batches;
-
-	Param4D(uint32_t height = 1, uint32_t width = 1, uint32_t channels = 1, uint32_t batches = 1)
+	for (int b = batchCount; b--;)
 	{
-		assert(height > 0 && width > 0 && channels > 0 && batches > 0);
-		this->height = height;
-		this->width = width;
-		this->channels = channels;
-		this->batches = batches;
+		for (int m = CCols; m--;)
+			for (int n = CRows; n--;)
+			{
+				float sum = 0;
+				for (int k = AColsBRows; k--;)
+					sum += (transA ? A[k * ColsA + n] : A[n * ColsA + k]) * (transB ? B[m * ColsB + k] : B[k * ColsB + m]);
+				C[n * ColsC + m] = *alpha * sum + *beta * C[n * ColsC + m];
+			}
+		A += SizeA;
+		B += SizeB;
+		C += SizeC;
 	}
-
-	Param4D(const Param4D* other)
-	{
-		this->height = other->height;
-		this->width = other->width;
-		this->channels = other->channels;
-		this->batches = other->batches;
-	}
-
-	bool operator==(const Param4D& other) const
-	{
-		return height == other.height && width == other.width && channels == other.channels && batches == other.batches;
-	}
-
-	uint32_t size() const
-	{
-		return width * height * channels * batches;
-	}
-
-	Param4D* Reshape(Param4D param) const
-	{
-		assert(param.size() == size());
-		Param4D* parameter = new Param4D(param);
-		return parameter;
-	}
-
-	void Print() const
-	{
-		printf("(%u, %u, %u, %u)\n", height, width, channels, batches);
-	}
-};
-
-struct Param2D
-{
-	uint32_t height;
-	uint32_t width;
-
-	Param2D(uint32_t height = 1, uint32_t width = 1)
-	{
-		assert(height >= 0 && width >= 0);
-		this->height = height;
-		this->width = width;
-	}
-};
-
-struct Operation
-{
-	Param4D* outputParam;
-};
-
-struct MatrixMultiplication : Operation
-{
-	Param4D* inputParam1;
-	Param4D* inputParam2;
-
-	MatrixMultiplication(Param4D* inputParam1, Param4D* inputParam2, Param2D transpose = {0, 0})
-	{
-		assert(inputParam1 != nullptr);
-		assert(inputParam2 != nullptr);
-		// transpose logic asserts
-		assert(inputParam1->width == inputParam2->height);
-		assert(inputParam1->batches == inputParam2->batches);
-
-		this->inputParam1 = inputParam1;
-		this->inputParam2 = inputParam2;
-		outputParam = new Param4D(inputParam1->height, inputParam2->width, 1, inputParam1->batches);
-	}
-};
-
-struct MatrixAddition : Operation
-{
-	Param4D* inputParam1;
-	Param4D* inputParam2;
-
-	MatrixAddition(Param4D* inputParam1, Param4D* inputParam2)
-	{
-		assert(inputParam1 != nullptr);
-		assert(inputParam2 != nullptr);
-		assert(*inputParam1 == *inputParam2);
-
-		this->inputParam1 = inputParam1;
-		this->inputParam2 = inputParam2;
-		outputParam = new Param4D(inputParam1);
-	}
-
-struct Convolution : Operation
-{
-	Param4D* inputParam;
-	Param4D* kernelParam;
-	Param2D strideParam;
-	Param2D paddingParam;
-	Param2D dilationParam;
-
-	Convolution(Param4D* inputParam, Param4D* kernelParam, Param2D strideParam = { 1, 1 }, Param2D paddingParam = { 0, 0 }, Param2D dilationParam = { 1, 1 })
-	{
-		assert(inputParam != nullptr);
-		assert(inputParam->channels == kernelParam->channels);
-		float outputHeight = float(inputParam->height + 2 * paddingParam.height - dilationParam.height * (kernelParam->height - 1) - 1) / strideParam.height + 1;
-		float outputWidth = float(inputParam->width + 2 * paddingParam.width - dilationParam.width * (kernelParam->width - 1) - 1) / strideParam.width + 1;
-		assert(outputHeight == uint32_t(outputHeight));
-		assert(outputWidth == uint32_t(outputWidth));
-
-		this->inputParam = inputParam;
-		this->outputParam = new Param4D(outputHeight, outputWidth, kernelParam->batches, inputParam->batches);
-		this->kernelParam = kernelParam;
-		this->paddingParam = paddingParam;
-		this->strideParam = strideParam;
-		this->dilationParam = dilationParam;
-	}
-
-struct ReLU : Operation
-{
-	Param4D* inputParam;
-
-	ReLU(Param4D* inputParam)
-	{
-		assert(inputParam != nullptr);
-
-		this->inputParam = inputParam;
-		outputParam = new Param4D(inputParam);
-	}
-
-struct ModelModeler
-{
-	std::vector<Param4D*> parameters;
-	std::vector<Param4D*> userInputs;
-	std::vector<Param4D*> networkInputs;
-	std::vector<Param4D*> userOutputs;
-	std::vector<Param4D*> networkOutputs;
-
-	std::vector<Operation*> operations;
-
-	~ModelModeler()
-	{
-		for (Param4D* parameter : parameters)
-			delete parameter;
-		for (Param4D* parameter : userInputs)
-			delete parameter;
-		for (Param4D* parameter : networkInputs)
-			delete parameter;
-		for (Param4D* parameter : userOutputs)
-			delete parameter;
-		for (Param4D* parameter : networkOutputs)
-			delete parameter;
-		for (Operation* operation : operations)
-			delete operation;
-	}
-
-	Param4D* ParameterInput(Param4D param)
-	{
-		Param4D* parameter = new Param4D(param);
-		parameters.emplace_back(parameter);
-		return parameter;
-	}
-
-	Param4D* UserInput(Param4D param)
-	{
-		Param4D* parameter = new Param4D(param);
-		userInputs.emplace_back(parameter);
-		return parameter;
-	}
-
-	Param4D* NetworkInput(Param4D param)
-	{
-		Param4D* parameter = new Param4D(param);
-		networkInputs.emplace_back(parameter);
-		return parameter;
-	}
-
-	Param4D* AddOperation(Operation op)
-	{
-		Operation* operation = new Operation(op);
-		operations.emplace_back(operation);
-		return operation->outputParam;
-	}
-};
-
-int main()
-{
-	ModelModeler nn;
-
-	auto input1 = nn.UserInput({ 4096 });
-
-	auto flatten0 = input1->Reshape({ 64, 64 });
-	auto kernel1 = nn.ParameterInput({ 2, 2, 1, 8 });
-	auto conv1 = nn.AddOperation(Convolution(input1, kernel1, { 2, 2 }));
-	auto relu1 = nn.AddOperation(ReLU(conv1));
-
-	auto kernel2 = nn.ParameterInput({ 4, 4, kernel1->batches, 32 });
-	auto conv2 = nn.AddOperation(Convolution(conv1, kernel2, { 4, 4 }));
-	auto relu2 = nn.AddOperation(ReLU(conv2));
-
-	auto flatten1 = relu2->Reshape({ 1, relu2->size()});
-	auto weight1 = nn.ParameterInput({ flatten1->width, 64 });
-	auto hidden1 = nn.AddOperation(MatrixMultiplication(flatten1, weight1));
-	auto relu3 = nn.AddOperation(ReLU(hidden1));
-
-	auto weight2 = nn.ParameterInput({ relu3->width, 64 });
-	auto hidden2 = nn.AddOperation(MatrixMultiplication(hidden1, weight2));
-	auto relu4 = nn.AddOperation(ReLU(hidden2));
-
-	auto weight3 = nn.ParameterInput({ relu4->width, 2 });
-	auto output1 = nn.AddOperation(MatrixMultiplication(hidden2, weight3));
-
-    return 0;
 }
-*/
 
-struct ParameterDetails		// rename all to use this naming
+void PrintMatrixf32(float* arr, uint32_t rows, uint32_t cols, const char* label)
 {
-	uint32_t size;
-	float* arr;		// find better name
-
-	ParameterDetails(uint32_t size) : size(size) {}
-};
-
-struct OperationDetails		// rename all to use this naming
-{
-	OperationDetails(ParameterDetails* inputParam1, ParameterDetails* inputParam2, ParameterDetails* outputParam)
+	printf("%s:\n", label);
+	for (uint32_t i = 0; i < rows; i++)
 	{
-		this->inputParam1 = inputParam1;
-		this->inputParam2 = inputParam2;
-		this->outputParam = outputParam;
+		for (uint32_t j = 0; j < cols; j++)
+			printf("%8.4f ", arr[i * cols + j]);
+		printf("\n");
 	}
-
-	ParameterDetails* inputParam1;
-	ParameterDetails* inputParam2;
-	ParameterDetails* outputParam;
-};
+	printf("\n");
+}
 
 struct Operation
 {
-	float* inputParam1;
-	float* inputParam2;
-	float* outputParam;
+	virtual ~Operation() = default;
+	virtual float* GetOutputTensor() = 0;
+	virtual float* GetInputGradientTensor() = 0;
+	virtual void ZeroForward() = 0;
+	virtual void ZeroBackward() = 0;
+	virtual void Forward() = 0;
+	virtual void Backward() = 0;
+	virtual void Update() = 0;
+};
 
-	void Forward()
+struct Linear : Operation
+{
+	int inputTensorHeight;
+	int inputTensorWidth;
+	int outputTensorWidth;
+	float* inputTensor;
+	float* weightTensor;
+	float* outputTensor;
+	float* outputGradientTensor;
+
+	Linear(int inputTensorHeight, int inputTensorWidth, int outputTensorWidth, float* inputTensor, float* outputGradientTensor) :
+		inputTensorHeight(inputTensorHeight),
+		inputTensorWidth(inputTensorWidth),
+		outputTensorWidth(outputTensorWidth),
+		inputTensor(inputTensor),
+		outputGradientTensor(outputGradientTensor)
 	{
-		*outputParam = *inputParam1 + *inputParam2;
+		weightTensor = new float[inputTensorWidth * outputTensorWidth];
+		outputTensor = new float[inputTensorHeight * outputTensorWidth];
+		memset(weightTensor, 0, sizeof(float) * inputTensorWidth * outputTensorWidth);
+		for (int i = 0; i < inputTensorWidth; i++)
+			weightTensor[i * outputTensorWidth + i] = 1.0f;
+		//PrintMatrixf32(weightTensor, inputTensorWidth, outputTensorWidth, "weightTensor");
+	}
+
+	~Linear() override
+	{
+		delete[] weightTensor;
+		delete[] outputTensor;
+	}
+
+	float* GetOutputTensor() override
+	{
+		return outputTensor;
+	}
+
+	float* GetInputGradientTensor() override
+	{
+		return inputTensor;
+	}
+
+	void ZeroForward() override
+	{
+		memset(outputTensor, 0, sizeof(float) * inputTensorHeight * outputTensorWidth);
+	}
+
+	void ZeroBackward() override
+	{
+		//memset(inputTensor, 0, sizeof(float) * inputTensorHeight * inputTensorWidth);
+	}
+
+	void Forward() override
+	{
+		cpuSgemmStridedBatched(
+			false, false,
+			outputTensorWidth, inputTensorHeight, inputTensorWidth,
+			&ONEF,
+			weightTensor, inputTensorWidth, inputTensorWidth * outputTensorWidth,
+			inputTensor, inputTensorWidth, inputTensorHeight * inputTensorWidth,
+			&ONEF,
+			outputTensor, outputTensorWidth, inputTensorHeight * outputTensorWidth,
+			1
+		);
+	}
+
+	void Backward() override
+	{
+	}
+
+	void Update() override
+	{
 	}
 };
 
-struct NeuralNetwork	// rename to nn instance, nn should be a vector of nn instances
+struct NeuralNetwork
 {
-	uint32_t numDynamicParameters;
-	uint32_t numInputs;
-	uint32_t numOutputs;
-	uint32_t numOperations;
-	
-	float** dynamicParameters;	// soley for the deconstructor, the constant parameters are dealt with by the modeler
-	float** inputs;				// soley for user inputs
-	float** outputs;			// soley for user outputs
-	Operation* operations;		// just run them in order
+	std::vector<float*> tensors;
+	std::vector<Operation*> operations;
 
 	~NeuralNetwork()
 	{
-		for (uint32_t i = 0; i < numDynamicParameters; i++)
-		{
-			printf("delete dynamic arr address: %p\n", dynamicParameters[i]);
-			delete[] dynamicParameters[i];
-		}
-		
-		printf("delete dynamic arr address: %p\n", dynamicParameters);
-		printf("delete dynamic arr address: %p\n", inputs);
-		printf("delete dynamic arr address: %p\n", outputs);
-		printf("delete dynamic arr address: %p\n", operations);
-		delete[] dynamicParameters;
-		delete[] inputs;
-		delete[] outputs;
-		delete[] operations;
+		for (auto& tensor : tensors)
+			delete[] tensor;
+		for (auto& operation : operations)
+			delete operation;
+	}
+
+	float* AddTensor(float* tensor)
+	{
+		tensors.emplace_back(tensor);
+		return tensor;
+	}
+
+	void AddOperation(Operation* operation)
+	{
+		operations.emplace_back(operation);
 	}
 
 	void Forward()
 	{
-		for (uint32_t i = 0; i < numOperations; i++)
-			operations[i].Forward();
-	}
+		for (float* tensor : tensors)
+			memset(tensor, 0, sizeof(float));
 
-	void SetInput(uint32_t index, float* arr)
-	{
-		assert(index < numInputs);
-		memcpy(inputs[index], arr, sizeof(float) * numInputs);
-	}
-
-	void GetOutput(uint32_t index, float* arr)
-	{
-		assert(index < numOutputs);
-		memcpy(arr, outputs[index], sizeof(float) * numOutputs);
+		for (Operation* operation : operations)
+			operation->Forward();
 	}
 };
-
-struct Modeler
-{
-	std::vector<ParameterDetails*> dynamicParameters;	// stores all dynamic parameters, arrs that depends on something like user inputs
-	std::vector<ParameterDetails*> constantParameters;	// stores all constant parameters, arrs that do not depend on anything like weights
-	std::vector<ParameterDetails*> inputParameters;		// stores all dynamic parameters that are the user is expected to alter
-	std::vector<ParameterDetails*> outputParameters;	// stores all dynamic parameters that are the user is expected to read
-	std::vector<OperationDetails> operationDetails;		// stores all operationDetails
-
-	~Modeler()
-	{
-		for (ParameterDetails* parameter : dynamicParameters)
-		{
-			printf("delete dynamic Parameters address: %p\n", parameter);
-			delete parameter;			// delete the parameter pointer so user does not have to
-		}
-		for (ParameterDetails* parameter : constantParameters)
-		{
-			printf("delete constant arr address: %p\n", parameter->arr);
-			printf("delete constant parameter address: %p\n", parameter);
-			delete[] parameter->arr;	// delete the constant array as its location is fixed accross all instances
-			delete parameter;			// delete the parameter pointer so user does not have to
-		}
-	}
-
-	ParameterDetails* AddDynamicParameter(ParameterDetails* parameter)
-	{
-		printf("new Dynamic Parameter address: %p\n", parameter);
-		dynamicParameters.emplace_back(parameter);
-		return parameter;
-	}
-
-	ParameterDetails* AddConstantParameter(ParameterDetails* parameter)
-	{
-		printf("new Constant Parameter address: %p\n", parameter);
-		constantParameters.emplace_back(parameter);
-		return parameter;
-	}
-
-	void HintInput(ParameterDetails* parameter)
-	{
-		inputParameters.emplace_back(parameter);
-	}
-
-	void HintOutput(ParameterDetails* parameter)
-	{
-		outputParameters.emplace_back(parameter);
-	}
-
-	void AddOperation(OperationDetails operation)
-	{
-		operationDetails.emplace_back(operation);
-	}
-
-	void Initialize()
-	{
-		for (ParameterDetails* parameter : constantParameters)
-		{
-			parameter->arr = new float[parameter->size];
-			for (uint32_t i = 0; i < parameter->size; i++)
-			{
-				printf("new constant arr address: %p\n", parameter->arr);
-				parameter->arr[i] = 11;
-			}
-		}
-	}
-
-	void Instance(NeuralNetwork* nn)
-	{
-		for (ParameterDetails* parameter : dynamicParameters)
-		{
-			parameter->arr = new float[parameter->size];
-			printf("new dynamic array address: %p\n", parameter->arr);
-		}
-
-		/*for (ParameterDetails* parameter : dynamicParameters)
-			nn->dynamicParameters.emplace_back(parameter->arr);*/
-		nn->numDynamicParameters = dynamicParameters.size();
-		nn->dynamicParameters = new float* [nn->numDynamicParameters];
-		printf("new dynamic array address: %p\n", nn->dynamicParameters);
-		for (uint32_t i = 0; i < nn->numDynamicParameters; i++)
-			nn->dynamicParameters[i] = dynamicParameters[i]->arr;
-
-		/*for (ParameterDetails* parameter : inputParameters)
-			nn->inputs.emplace_back(parameter->arr);*/
-		nn->numInputs = inputParameters.size();
-		nn->inputs = new float* [nn->numInputs];
-		printf("new dynamic array address: %p\n", nn->inputs);
-		for (uint32_t i = 0; i < nn->numInputs; i++)
-			nn->inputs[i] = inputParameters[i]->arr;
-
-		/*for (ParameterDetails* parameter : outputParameters)
-			nn->outputs.emplace_back(parameter->arr);*/
-		nn->numOutputs = outputParameters.size();
-		nn->outputs = new float* [nn->numOutputs];
-		printf("new dynamic array address: %p\n", nn->outputs);
-		for (uint32_t i = 0; i < nn->numOutputs; i++)
-			nn->outputs[i] = outputParameters[i]->arr;
-		
-		/*for (OperationDetails operationDetail : operationDetails)
-		{
-			Operation op;
-			op.inputParam1 = operationDetail.inputParam1->arr;
-			op.inputParam2 = operationDetail.inputParam2->arr;
-			op.outputParam = operationDetail.outputParam->arr;
-			nn->operations.emplace_back(op);
-		}*/
-		nn->numOperations = operationDetails.size();
-		nn->operations = new Operation[nn->numOperations];
-		printf("new dynamic array address: %p\n", nn->operations);
-		for (uint32_t i = 0; i < nn->numOperations; i++)
-		{
-			nn->operations[i].inputParam1 = operationDetails[i].inputParam1->arr;
-			nn->operations[i].inputParam2 = operationDetails[i].inputParam2->arr;
-			nn->operations[i].outputParam = operationDetails[i].outputParam->arr;
-		}
-		//memcpy(nn->operations, operationDetails.data(), nn->numOperations * sizeof(Operation));
-	}
-};
-
-// weights are constant params
-// user inputs and operation outputs are dynamic params params
-// dynamic params are dependent on other dynamic params and/or constant params
-// constant params are not dependent on any other params
-// we can use compile to determin if constant or dynamic
-
-// working on: for debugging, log all addresses and remove them once deleted. if deleting a non existant address or if we end up with leftover addresses, we have a double deletion/memory leak
 
 int main()
 {
-	Modeler modeler;
-	
-	ParameterDetails* input = modeler.AddDynamicParameter(new ParameterDetails(1));
-	ParameterDetails* kernel = modeler.AddConstantParameter(new ParameterDetails(1));
-	ParameterDetails* output = modeler.AddDynamicParameter(new ParameterDetails(1));
+	NeuralNetwork nn;
+	float* inputTensor = new float[1 * 2];
+	float* productTensor = nn.AddTensor(new float[1 * 3]);
+	nn.AddOperation(new Linear(1, 2, 3, inputTensor, productTensor));
 
-	modeler.HintInput(input);
-	modeler.HintOutput(output);
-	
-	modeler.AddOperation(OperationDetails(input, kernel, output));
-	modeler.Initialize();
+	inputTensor[0] = 1.0f;
+	inputTensor[1] = 2.0f;
 
-	float inputArr[1];
-	float outputArr[1];
-	
-	std::vector<NeuralNetwork*> neuralNetworks;
-	for (uint8_t i = 10; i--;)
+	nn.Forward();
+
+	PrintMatrixf32(inputTensor, 1, 2, "inputTensor");
+	PrintMatrixf32(productTensor, 1, 3, "productTensor");
+
+	delete[] inputTensor;
+
+	====== =
+
+		/*
+		Operations:
+		- Matmul
+		- Matadd
+		- Concatenate
+		- Transpose
+		- Relu
+		- Reshape
+		- Softmax
+		- Convolution
+		*/
+
+		/*
+		Nodes:
+		- ExternalInput
+		- ExternalOutput
+		- RecursiveLink
+		- Parameter
+		- Intermediate
+		*/
+
+		/*
+		Compiler Notes:
+		- Transpose
+		-- Have a default transpose operation
+		-- if matmul is followed by transpose, flip the order of the matmul
+		-- if transpose is followed by matmul, set the transpose flag on the matmul
+		-- if transpose is followed by transpose, remove the transpose
+
+		- Concatenate
+		-- Have a default concatenate operation
+		-- if it is possible to just have the data next to each other in memory, do that
+
+		- MatAdd
+		-- Have a default matadd operation
+		-- if it is possible to just add to the existing matrix without effecting other operations, do that
+
+		- Convolution
+		-- Need to know more before I can logic out optimizations tied to all this
+
+		- Named Dimension Parameters
+		-- Think this out more, should help greatly with the organization of the network
+		-- Show the user the named dimension parameters, and allow them to change them
+
+		- Reshape
+		-- The only thing it does is change the shape of the tensor, data remains the same,
+		it just puts a constraint on the named dimension parameters to match the new shape
+		*/
+
+		struct Tensor
 	{
-		printf("new Neural Network address: %p\n", neuralNetworks);
-		NeuralNetwork* neuralNetwork = new NeuralNetwork();
-		neuralNetworks.emplace_back(neuralNetwork);
-		modeler.Instance(neuralNetwork);
-		
-		*inputArr = -i;
-		neuralNetwork->SetInput(0, inputArr);
-		neuralNetwork->Forward();
-		neuralNetwork->GetOutput(0, outputArr);
-		printf("%f\n", *outputArr);
-	}
-	
-	for (NeuralNetwork* neuralNetwork : neuralNetworks)
+	};
+
+	struct Operation
 	{
-		printf("delete Neural Network address: %p\n", neuralNetwork);
-		delete neuralNetwork;
+	};
+
+	struct Concatenate : Operation
+	{
+		Concatenate(Tensor* v1, Tensor* v2, Tensor* v3)
+		{
+		}
+	};
+
+	struct RecursiveLink : Operation
+	{
+		RecursiveLink(Tensor* v1, Tensor* v2)
+		{
+		}
+	};
+
+	struct MatMul : Operation
+	{
+		MatMul(Tensor* v1, Tensor* v2, Tensor* v3)
+		{
+		}
+	};
+
+	struct Relu : Operation
+	{
+		Relu(Tensor* v1, Tensor* v2)
+		{
+		}
+	};
+
+	struct MatAdd : Operation
+	{
+		MatAdd(Tensor* v1, Tensor* v2, Tensor* v3)
+		{
+		}
+	};
+
+	struct Pipeline
+	{
+		Pipeline(std::vector<Tensor*> inputs, std::vector<Tensor*> outputs)
+		{
+		}
+	};
+
+	struct NeuralNetwork
+	{
+		std::vector<Pipeline*> pipelines;
+
+		NeuralNetwork(std::vector<Pipeline*> pipelines)
+		{
+			this->pipelines = pipelines;
+		}
+	};
+
+	int main()
+	{
+		/*auto input = new Tensor();
+		auto hidden = new Tensor();
+		auto concat = new Tensor();
+		auto weight1 = new Tensor();
+		auto product = new Tensor();
+		auto relu = new Tensor();
+		auto weight2 = new Tensor();
+		auto output = new Tensor();
+		auto weight3 = new Tensor();
+		auto presum = new Tensor();
+		auto newHidden = new Tensor();
+
+		// define external alterations so we can determin the parameter nodes
+		// auto in = new ExternalInput(input);
+		// auto out = new ExternalOutput(output);
+		auto recursive = new RecursiveLink(newHidden, hidden);
+		// concat optimizes by requiring the arrays to be next to each other in memory if possible
+		// (if there is no layout conflict with other nodes)
+		auto concatenate = new Concatenate(hidden, input, concat);
+		auto matmul1 = new MatMul(concat, weight1, product);
+		auto relu1 = new Relu(product, relu);
+		auto matmul2 = new MatMul(relu, weight2, output);
+		auto matmul3 = new MatMul(relu, weight3, presum);
+		// matadd optimizes by not creating a new matrix containing the new sum if possible
+		// (if one of the nodes is not used for further computation, just add to that node)
+		auto matadd = new MatAdd(presum, hidden, newHidden);
+		// auto transpose = new Transpose(temp);
+		// transpose is going to be nessisary for things like attention
+		// the data is going to be stored in non transposed form, but the operations are going to be altered
+		// (matmul has transpose, learn about convolution, and think out others like concat)
+
+		// first vector is all the nodes that we will feed into the pipeline
+		// second vector is all the nodes that we expect to be calculated
+		// all the "leaf" nodes that are not in the first vector are considered constants aka parameters
+		auto forward = new Pipeline({ input }, { output });
+		auto backward = new Pipeline({ output }, { input });
+
+		auto network = new NeuralNetwork({ forward, backward });*/
+
+
+
+		// attention weights can be optimized into a single matrix, note to compiler
+		auto latent = new Tensor();
+		auto queryWeight = new Tensor();
+		auto keyWeight = new Tensor();
+		auto valueWeight = new Tensor();
+		auto query = new Tensor();
+		auto key = new Tensor();
+		auto keyTranspose = new Tensor();
+		auto value = new Tensor();
+		auto score = new Tensor();
+		// define batches, define reshapes
+		auto softmax = new Tensor();
+		auto attention = new Tensor();
+		auto attentionWeight = new Tensor();
+		auto attentionOutput = new Tensor();
+
+		auto matmul1 = new MatMul(latent, queryWeight, query);
+		auto matmul2 = new MatMul(latent, keyWeight, key);
+		auto matmul3 = new MatMul(latent, valueWeight, value);
+		auto transpose = new Transpose(key, keyTranspose);
+		auto matmul4 = new MatMul(query, keyTranspose, score);
+		auto softmax1 = new Softmax(score, softmax);
+		auto matmul5 = new MatMul(softmax, value, attention);
+		auto matmul6 = new MatMul(attention, attentionWeight, attentionOutput);
+
+		>>>>>> > f795b962316a94272aabbb59a149974b51052b83
+			return 0;
 	}
-	
-	return 0;
-}

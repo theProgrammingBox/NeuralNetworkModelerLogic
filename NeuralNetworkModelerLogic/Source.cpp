@@ -1,8 +1,5 @@
-#include "AddOperation.h"
-#include "ReluOperation.h"
-#include "GeluOperation.h"
-#include "AddBiasOperation.h"
-#include "MultiplyWeightOperation.h"
+#include "BasicResidualOperation.h"
+
 #include "NeuralNetwork.h"
 
 /*
@@ -11,8 +8,12 @@ Warnings:
 
 /*
 TODO:
+- add a compile function to allow for printing, forward, and backward
+-- there is a problem where if you make integrated operations, zeroForward doesn't touch the integrated parameters
+-- same problem occurs with printing and others
+-- compiling will do an ordered search to make an ordered list of unique items
+-- i might find a better solution then before as I was avoiding compiling
 - add layer norm
-- add the operation type in the label
 */
 
 int main()
@@ -26,17 +27,11 @@ int main()
 	NeuralNetwork network;
 	
 	TensorNode* input = network.AddTensorNode(new TensorNode("input", 8));
-	TensorNode* product = network.AddTensorNode(new TensorNode("product", 8));
-	TensorNode* relu = network.AddTensorNode(new TensorNode("relu", 8));
-	TensorNode* product2 = network.AddTensorNode(new TensorNode("product2", 8));
+	TensorNode* output = network.AddTensorNode(new TensorNode("output", 8));
 
-	network.AddOperation(new MultiplyWeightOperation(input, product));
-	network.AddOperation(new AddBiasOperation(product));
-	network.AddOperation(new GeluOperation(product, relu));
-	network.AddOperation(new MultiplyWeightOperation(relu, product2));
-	network.AddOperation(new AddOperation(input, product2));
+	network.AddOperation(new BasicResidualOperation(input, output));
 
-	for (int episode = 0; episode < EPISODES; episode++)
+	/*for (int episode = 0; episode < EPISODES; episode++)
 	{
 		for (int batch = 0; batch < BATCH_SIZE; batch++)
 		{
@@ -48,12 +43,12 @@ int main()
 
 			network.ZeroBackward();
 			for (int i = 0; i < 8; i++)
-				product2->backwardTensor[i] = -i - product2->forwardTensor[i];
+				output->backwardTensor[i] = input->forwardTensor[i] - output->forwardTensor[i];
 
 			network.Backward();
 		}
 		network.Update(&UPDATE_RATE);
-	}
+	}*/
 	
 	network.PrintForward();
 	printf("\n");

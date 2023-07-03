@@ -44,5 +44,8 @@
     <ClInclude Include="MultiplyWeightOperation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="GeluOperation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

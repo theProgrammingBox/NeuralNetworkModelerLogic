@@ -1,5 +1,6 @@
 #include "AddOperation.h"
 #include "ReluOperation.h"
+#include "GeluOperation.h"
 #include "AddBiasOperation.h"
 #include "MultiplyWeightOperation.h"
 #include "NeuralNetwork.h"
@@ -10,7 +11,7 @@ Warnings:
 
 /*
 TODO:
-- work on backward
+- add layer norm
 */
 
 int main()
@@ -30,7 +31,8 @@ int main()
 
 	network.AddOperation(new MultiplyWeightOperation(input, product));
 	network.AddOperation(new AddBiasOperation(product));
-	network.AddOperation(new ReluOperation(product, relu));
+	//network.AddOperation(new ReluOperation(product, relu));
+	network.AddOperation(new GeluOperation(product, relu));
 	network.AddOperation(new MultiplyWeightOperation(relu, product2));
 	network.AddOperation(new AddOperation(input, product2));
 
@@ -46,7 +48,7 @@ int main()
 
 			network.ZeroBackward();
 			for (int i = 0; i < 8; i++)
-				product2->backwardTensor[i] = 8 - product2->forwardTensor[i];
+				product2->backwardTensor[i] = -i - product2->forwardTensor[i];
 
 			network.Backward();
 		}

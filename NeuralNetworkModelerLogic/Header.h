@@ -76,3 +76,35 @@ void cpuReluBackward(
 	for (int i = 0; i < n; i++)
 		dx[i] = *beta * dx[i] + (*alpha * x[i] >= 0 ? *alpha * dy[i] : 0);
 }
+
+void cpuGeluForward(
+	int n,
+	const float* alpha,
+	const float* x,
+	const float* beta,
+	float* y)
+{
+	for (int i = 0; i < n; i++)
+	{
+		float gelu = x[i] / (1 + exp(-1.702 * x[i]));
+		y[i] = *beta * y[i] + *alpha * gelu;
+	}
+}
+
+void cpuGeluBackward(
+	int n,
+	const float* alpha,
+	const float* dy,
+	const float* x,
+	const float* beta,
+	float* dx)
+{
+	for (int i = 0; i < n; i++)
+	{
+		float z0 = 1.702 * x[i];
+		float z1 = exp(z0);
+		float z2 = z1 + 1;
+		float geluGrad = z1 * (z0 + z1 + 1) / (z2 * z2);
+		dx[i] = *beta * dx[i] + *alpha * geluGrad * dy[i];
+	}
+}

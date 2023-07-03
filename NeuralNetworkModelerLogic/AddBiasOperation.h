@@ -10,10 +10,11 @@ struct AddBiasOperation : Operation
 		: input(input)
 	{
 		assert(input != nullptr);
-		bias = new TensorNode(input->size);
 		
+		bias = new TensorNode(input->size);
+		//bias->ZeroForward();
 		for (int i = 0; i < bias->size; i++)
-			bias->forwardTensor[i] = 1;
+			bias->forwardTensor[i] = 1.0f;
 		bias->ZeroBackward();
 	}
 

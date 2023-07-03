@@ -3,34 +3,23 @@
 
 struct MultiplyWeightOperation : Operation
 {
-	bool transposeA;
-	bool transposeB;
-	int inputHeight;
-	int inputWidth;
-	int outputWidth;
-	const float* alpha;
-	const float* beta;
-	
 	TensorNode* input;
 	TensorNode* output;
 	TensorNode* weight;
 
-	MultiplyWeightOperation(TensorNode* input, TensorNode* output, bool transposeA = false, bool transposeB = false, int inputHeight = 0, int inputWidth = 0, int outputWidth = 0, const float* alpha = &ONEF, const float* beta = &ZEROF)
-		: input(input), output(output), transposeA(transposeA), transposeB(transposeB), inputHeight(inputHeight), inputWidth(inputWidth), outputWidth(outputWidth), alpha(alpha), beta(beta)
+	MultiplyWeightOperation(TensorNode* input, TensorNode* output)
+		: input(input), output(output)
 	{
-		if (inputHeight == 0)
-			this->inputHeight = input->height;
-		if (inputWidth == 0)
-			this->inputWidth = input->width;
-		if (outputWidth == 0)
-			this->outputWidth = output->width;
+		assert(input != nullptr);
+		assert(output != nullptr);
+		assert(input != output);
+		assert(input->height == output->height);
 		
-		weight = new TensorNode(this->outputWidth, this->inputWidth);
-		weight->ZeroForwardTensor();
-		// identity matrix
-		for (int i = 0; i < this->outputWidth; i++)
-			weight->forwardTensor[i * this->inputWidth + i] = 1;
-		weight->ZeroBackwardTensor();
+		weight = new TensorNode(output->width, input->width);
+		
+		weight->ZeroForward();
+		for (int i = 0; i < std::min(weight->width, weight->height); i++)
+			weight->forwardTensor[i * weight->width + i] = 1;
 	}
 
 	~MultiplyWeightOperation()
@@ -41,13 +30,13 @@ struct MultiplyWeightOperation : Operation
 	void Forward() override
 	{
 		cpuSgemmStridedBatched(
-			transposeA, transposeB,
-			outputWidth, inputHeight, inputWidth,
-			alpha,
-			weight->forwardTensor, outputWidth, outputWidth * inputWidth,
-			input->forwardTensor, inputWidth, inputWidth * inputHeight,
-			beta,
-			output->forwardTensor, outputWidth, outputWidth * inputHeight,
+			false, false,
+			output->width, input->height, input->width,
+			&ONEF,
+			weight->forwardTensor, output->width, output->width * input->height,
+			input->forwardTensor, input->width, input->width * input->height,
+			&ONEF,
+			output->forwardTensor, output->width, output->width * input->height,
 			1);
 	}
 };

@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
 #include <vector>
+#include <cassert>
 
 const float ONEF = 1.0f;
 const float ZEROF = 0.0f;

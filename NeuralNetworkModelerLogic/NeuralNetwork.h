@@ -27,6 +27,12 @@ struct NeuralNetwork
 		return operation;
 	}
 
+	void ZeroForwardTensors()
+	{
+		for (TensorNode* node : nodes)
+			node->ZeroForward();
+	}
+
 	void Forward()
 	{
 		for (Operation* operation : operations)

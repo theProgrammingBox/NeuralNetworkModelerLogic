@@ -6,8 +6,6 @@
 
 /*
 Warnings:
-- be careful about your alpha/beta values when they default to 1 because if output is not initialized to 0 or a result of another operation, you will get garbage
--- compiler can check if there is an operation on output node with an alpha/beta of 1 before hand
 */
 
 /*
@@ -21,23 +19,26 @@ int main()
 	NeuralNetwork network;
 	
 	TensorNode* input = network.AddTensorNode(8);
-	TensorNode* productAndRelu = network.AddTensorNode(8);
-	TensorNode* productAndSum = network.AddTensorNode(8);
+	TensorNode* product = network.AddTensorNode(8);
+	TensorNode* relu = network.AddTensorNode(8);
+	TensorNode* product2 = network.AddTensorNode(8);
 
-	network.AddOperation(new MultiplyWeightOperation(input, productAndRelu));
-	network.AddOperation(new AddBiasOperation(productAndRelu));
-	network.AddOperation(new ReluOperation(productAndRelu));
-	network.AddOperation(new MultiplyWeightOperation(productAndRelu, productAndSum));
-	network.AddOperation(new AddOperation(input, productAndSum));
+	network.AddOperation(new MultiplyWeightOperation(input, product));
+	network.AddOperation(new AddBiasOperation(product));
+	network.AddOperation(new ReluOperation(product, relu));
+	network.AddOperation(new MultiplyWeightOperation(relu, product2));
+	network.AddOperation(new AddOperation(input, product2));
 
+	network.ZeroForwardTensors();
 	for (int i = 0; i < 8; i++)
 		input->forwardTensor[i] = i;
 	
 	network.Forward();
 	
-	input->PrintForwardTensor();
-	productAndRelu->PrintForwardTensor();
-	productAndSum->PrintForwardTensor();
+	input->PrintForward("input");
+	product->PrintForward("product");
+	relu->PrintForward("relu");
+	product2->PrintForward("product2");
 	
 	return 0;
 }

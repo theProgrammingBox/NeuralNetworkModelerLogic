@@ -3,23 +3,17 @@
 
 struct AddBiasOperation : Operation
 {
-	int size;
-	const float* alpha;
-	int incx;
-	int incy;
 	TensorNode* input;
 	TensorNode* bias;
 
-	AddBiasOperation(TensorNode* input, int size = 0, const float* alpha = &ONEF, int incx = 1, int incy = 1)
-		: input(input), size(size), alpha(alpha), incx(incx), incy(incy)
+	AddBiasOperation(TensorNode* input)
+		: input(input)
 	{
-		if (size == 0)
-			this->size = input->size;
-		bias = new TensorNode(this->size);
-		bias->ZeroForwardTensor();
-		for (int i = 0; i < this->size; i++)
+		assert(input != nullptr);
+		bias = new TensorNode(input->size);
+		
+		for (int i = 0; i < bias->size; i++)
 			bias->forwardTensor[i] = 1;
-		bias->ZeroBackwardTensor();
 	}
 
 	~AddBiasOperation()
@@ -29,6 +23,6 @@ struct AddBiasOperation : Operation
 
 	void Forward() override
 	{
-		cpuSaxpy(size, alpha, bias->forwardTensor, incx, input->forwardTensor, incy);
+		cpuSaxpy(input->size, &ONEF, bias->forwardTensor, 1, input->forwardTensor, 1);
 	}
 };

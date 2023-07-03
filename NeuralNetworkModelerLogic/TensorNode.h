@@ -26,23 +26,23 @@ struct TensorNode
 		delete[] backwardTensor;
 	}
 
-	void ZeroForwardTensor()
+	void ZeroForward()
 	{
 		memset(forwardTensor, 0, sizeof(float) * size);
 	}
 
-	void ZeroBackwardTensor()
+	void ZeroBackward()
 	{
 		memset(backwardTensor, 0, sizeof(float) * size);
 	}
 
-	void PrintForwardTensor() const
+	void PrintForward(const char* label) const
 	{
-		PrintMatrixf32(forwardTensor, width, height, "Forward Tensor");
+		PrintMatrixf32(forwardTensor, width, height, label);
 	}
 
-	void PrintBackwardTensor() const
+	void PrintBackward(const char* label) const
 	{
-		PrintMatrixf32(backwardTensor, width, height, "Backward Tensor");
+		PrintMatrixf32(backwardTensor, width, height, label);
 	}
 };

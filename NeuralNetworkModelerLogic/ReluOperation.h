@@ -3,23 +3,20 @@
 
 struct ReluOperation : Operation
 {
-	int size;
-	const float* alpha;
-	const float* beta;
 	TensorNode* input;
 	TensorNode* output;
 
-	ReluOperation(TensorNode* input, TensorNode* output = nullptr, int size = 0, const float* alpha = &ONEF, const float* beta = &ZEROF)
-		: input(input), output(output), size(size), alpha(alpha), beta(beta)
+	ReluOperation(TensorNode* input, TensorNode* output)
+		: input(input), output(output)
 	{
-		if (size == 0)
-			this->size = input->size;
-		if (output == nullptr)
-			this->output = input;
+		assert(input != nullptr);
+		assert(output != nullptr);
+		assert(input != output);
+		assert(input->size == output->size);
 	}
 
 	void Forward() override
 	{
-		cpuReluForward(size, alpha, input->forwardTensor, beta, output->forwardTensor);
+		cpuReluForward(input->size, &ONEF, input->forwardTensor, &ONEF, output->forwardTensor);
 	}
 };

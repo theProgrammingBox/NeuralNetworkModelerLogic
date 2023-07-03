@@ -12,6 +12,7 @@ Warnings:
 /*
 TODO:
 - add layer norm
+- add the operation type in the label
 */
 
 int main()

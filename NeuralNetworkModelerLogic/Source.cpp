@@ -1,7 +1,13 @@
 #include <iostream>
 #include <vector>
 
+/*
+TODO:
+- maybe insead of sum based, make sum an exclusive operation
+*/
+
 const float ONEF = 1.0f;
+const float ZEROF = 0.0f;
 
 void cpuSaxpy(
 	int n,
@@ -77,49 +83,66 @@ struct Operation
 struct AddOperation : Operation
 {
 	int size;
+	const float* alpha;
+	int incx;
+	int incy;
 	TensorNode* input1;
 	TensorNode* input2;
 
-	AddOperation(int size, TensorNode* input1, TensorNode* input2)
-		: size(size), input1(input1), input2(input2)
+	AddOperation(TensorNode* input1, TensorNode* input2, int size = 0, const float* alpha = &ONEF, int incx = 1, int incy = 1)
+		: input1(input1), input2(input2), size(size), alpha(alpha), incx(incx), incy(incy)
 	{
+		if (size == 0)
+			this->size = input1->size;
 	}
 
 	void Forward() override
 	{
-		cpuSaxpy(size, &ONEF, input1->forwardTensor, 1, input2->forwardTensor, 1);
+		cpuSaxpy(size, alpha, input1->forwardTensor, incx, input2->forwardTensor, incy);
 	}
 };
 
 struct ReluOperation : Operation
 {
 	int size;
+	const float* alpha;
+	const float* beta;
 	TensorNode* input;
 	TensorNode* output;
 
-	ReluOperation(int size, TensorNode* input, TensorNode* output)
-		: size(size), input(input), output(output)
+	ReluOperation(TensorNode* input, TensorNode* output = nullptr, int size = 0, const float* alpha = &ONEF, const float* beta = &ZEROF)
+		: input(input), output(output), size(size), alpha(alpha), beta(beta)
 	{
+		if (size == 0)
+			this->size = input->size;
+		if (output == nullptr)
+			this->output = input;
 	}
 
 	void Forward() override
 	{
-		cpuReluForward(size, &ONEF, input->forwardTensor, &ONEF, output->forwardTensor);
+		cpuReluForward(size, alpha, input->forwardTensor, beta, output->forwardTensor);
 	}
 };
 
 struct AddBiasOperation : Operation
 {
+	int size;
+	const float* alpha;
+	int incx;
+	int incy;
 	TensorNode* input;
-	TensorNode* output;
 	float* bias;
 
-	AddBiasOperation(TensorNode* input)
-		: input(input)
+	AddBiasOperation(TensorNode* input, int size = 0, const float* alpha = &ONEF, int incx = 1, int incy = 1)
+		: input(input), size(size), alpha(alpha), incx(incx), incy(incy)
 	{
+		if (size == 0)
+			this->size = input->size;
 		bias = new float[input->size];
+		//memset(bias, 0, sizeof(float) * input->size);
 		for (int i = 0; i < input->size; i++)
-			bias[i] = 1 - i;
+			bias[i] = 1.0f;
 	}
 
 	~AddBiasOperation()
@@ -129,7 +152,7 @@ struct AddBiasOperation : Operation
 
 	void Forward() override
 	{
-		cpuSaxpy(size, &ONEF, bias, 1, input->forwardTensor, 1);
+		cpuSaxpy(size, alpha, bias, incx, input->forwardTensor, incy);
 	}
 };
 
@@ -149,20 +172,18 @@ struct NeuralNetwork
 	TensorNode* AddTensorNode(int size)
 	{
 		TensorNode* node = new TensorNode(size);
-		nodes.push_back(node);
+		nodes.emplace_back(node);
 		return node;
 	}
 
 	Operation* AddOperation(Operation* operation)
 	{
-		operations.push_back(operation);
+		operations.emplace_back(operation);
 		return operation;
 	}
 
 	void Forward()
 	{
-		for (TensorNode* node : nodes)
-			memset(node->forwardTensor, 0, sizeof(float) * node->size);
 		for (Operation* operation : operations)
 			operation->Forward();
 	}
@@ -174,19 +195,17 @@ int main()
 	
 	TensorNode* node1 = new TensorNode(6);
 	TensorNode* node2 = network.AddTensorNode(6);
-	TensorNode* node3 = network.AddTensorNode(6);
 
-	network.AddOperation(new ReluOperation(6, node1, node2));
-	network.AddOperation(new AddOperation(6, node1, node3));
-	network.AddOperation(new AddOperation(6, node2, node3));
-	network.AddOperation(new AddBiasOperation(node3));
+	network.AddOperation(new ReluOperation(node1, node2));
+	network.AddOperation(new AddOperation(node1, node2));
+	network.AddOperation(new AddBiasOperation(node2));
 
 	for (int i = 0; i < 6; i++)
 		node1->forwardTensor[i] = i - 3;
 	
 	network.Forward();
-	PrintMatrixf32(node2->forwardTensor, 1, 6, "relu");
-	PrintMatrixf32(node3->forwardTensor, 1, 6, "relu and sum and bias");
+	PrintMatrixf32(node1->forwardTensor, 1, 6, "input");
+	PrintMatrixf32(node2->forwardTensor, 1, 6, "relu and sum and bias");
 	
 	return 0;
 }

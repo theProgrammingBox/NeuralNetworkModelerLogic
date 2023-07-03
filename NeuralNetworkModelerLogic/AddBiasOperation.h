@@ -11,7 +11,7 @@ struct AddBiasOperation : Operation
 	{
 		assert(input != nullptr);
 		
-		bias = new TensorNode(input->size);
+		bias = new TensorNode("Bias", input->size);
 		//bias->ZeroForward();
 		for (int i = 0; i < bias->size; i++)
 			bias->forwardTensor[i] = 1.0f;
@@ -37,5 +37,10 @@ struct AddBiasOperation : Operation
 	{
 		cpuSaxpy(input->size, learningRate, bias->backwardTensor, 1, bias->forwardTensor, 1);
 		bias->ZeroBackward();
+	}
+
+	void PrintParam() const override
+	{
+		bias->PrintForward();
 	}
 };

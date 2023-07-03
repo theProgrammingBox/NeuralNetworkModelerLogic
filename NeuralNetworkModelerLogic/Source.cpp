@@ -25,14 +25,13 @@ int main()
 	
 	NeuralNetwork network;
 	
-	TensorNode* input = network.AddTensorNode(8);
-	TensorNode* product = network.AddTensorNode(8);
-	TensorNode* relu = network.AddTensorNode(8);
-	TensorNode* product2 = network.AddTensorNode(8);
+	TensorNode* input = network.AddTensorNode(new TensorNode("input", 8));
+	TensorNode* product = network.AddTensorNode(new TensorNode("product", 8));
+	TensorNode* relu = network.AddTensorNode(new TensorNode("relu", 8));
+	TensorNode* product2 = network.AddTensorNode(new TensorNode("product2", 8));
 
 	network.AddOperation(new MultiplyWeightOperation(input, product));
 	network.AddOperation(new AddBiasOperation(product));
-	//network.AddOperation(new ReluOperation(product, relu));
 	network.AddOperation(new GeluOperation(product, relu));
 	network.AddOperation(new MultiplyWeightOperation(relu, product2));
 	network.AddOperation(new AddOperation(input, product2));
@@ -55,17 +54,14 @@ int main()
 		}
 		network.Update(&UPDATE_RATE);
 	}
-
-	input->PrintForward("input");
-	product->PrintForward("product");
-	relu->PrintForward("relu");
-	product2->PrintForward("product2");
+	
+	network.PrintForward();
 	printf("\n");
 
-	product2->PrintBackward("product2 Gradient");
-	relu->PrintBackward("relu Gradient");
-	product->PrintBackward("product Gradient");
-	input->PrintBackward("input Gradient");
+	network.PrintBackward();
+	printf("\n");
+	
+	network.PrintParam();
 	
 	return 0;
 }

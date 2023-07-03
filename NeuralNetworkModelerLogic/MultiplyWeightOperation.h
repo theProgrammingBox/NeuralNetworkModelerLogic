@@ -15,7 +15,7 @@ struct MultiplyWeightOperation : Operation
 		assert(input != output);
 		assert(input->height == output->height);
 		
-		weight = new TensorNode(output->width, input->width);
+		weight = new TensorNode("weight", output->width, input->width);
 		weight->ZeroForward();
 		for (int i = 0; i < std::min(input->width, output->width); i++)
 			weight->forwardTensor[i * input->width + i] = 1.0f;
@@ -66,5 +66,10 @@ struct MultiplyWeightOperation : Operation
 	{
 		cpuSaxpy(weight->size, learningRate, weight->backwardTensor, 1, weight->forwardTensor, 1);
 		weight->ZeroBackward();
+	}
+
+	void PrintParam() const override
+	{
+		weight->PrintForward();
 	}
 };

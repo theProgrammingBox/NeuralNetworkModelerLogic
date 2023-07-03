@@ -14,17 +14,15 @@ struct NeuralNetwork
 			delete operation;
 	}
 
-	TensorNode* AddTensorNode(int size)
+	TensorNode* AddTensorNode(TensorNode* node)
 	{
-		TensorNode* node = new TensorNode(size);
 		nodes.emplace_back(node);
 		return node;
 	}
 
-	Operation* AddOperation(Operation* operation)
+	void AddOperation(Operation* operation)
 	{
 		operations.emplace_back(operation);
-		return operation;
 	}
 
 	void ZeroForward()
@@ -55,5 +53,23 @@ struct NeuralNetwork
 	{
 		for (Operation* operation : operations)
 			operation->Update(learningRate);
+	}
+
+	void PrintParam() const
+	{
+		for (Operation* operation : operations)
+			operation->PrintParam();
+	}
+
+	void PrintForward() const
+	{
+		for (TensorNode* node : nodes)
+			node->PrintForward();
+	}
+
+	void PrintBackward() const
+	{
+		for (auto it = nodes.rbegin(); it != nodes.rend(); ++it)
+			(*it)->PrintBackward();
 	}
 };

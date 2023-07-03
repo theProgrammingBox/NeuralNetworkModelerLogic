@@ -1,12 +1,16 @@
 #pragma once
 #include "Operation.h"
 
-struct GeluOperation : Operation
+struct BasicResidualOperation : Operation
 {
 	TensorNode* input;
 	TensorNode* output;
 
-	GeluOperation(TensorNode* input, TensorNode* output)
+	Operation* MultiplyWeight;
+	Operation* AddBias;
+	Operation* Relu;
+
+	BasicResidualOperation(TensorNode* input, TensorNode* output)
 		: input(input), output(output)
 	{
 		assert(input != nullptr);
@@ -17,12 +21,12 @@ struct GeluOperation : Operation
 
 	void Forward() override
 	{
-		cpuGeluForward(input->size, &ONEF, input->forwardTensor, &ONEF, output->forwardTensor);
+		cpuSaxpy(input->size, &ONEF, input->forwardTensor, 1, output->forwardTensor, 1);
 	}
 
 	void Backward() override
 	{
-		cpuGeluBackward(input->size, &ONEF, output->backwardTensor, input->forwardTensor, &ONEF, input->backwardTensor);
+		cpuSaxpy(input->size, &ONEF, output->backwardTensor, 1, input->backwardTensor, 1);
 	}
 
 	void Update(const float* learningRate) override

@@ -28,4 +28,8 @@ struct ReluOperation : Operation
 	void Update(const float* learningRate) override
 	{
 	}
+
+	void PrintParam() const override
+	{
+	}
 };

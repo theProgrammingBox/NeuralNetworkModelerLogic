@@ -27,15 +27,33 @@ struct NeuralNetwork
 		return operation;
 	}
 
-	void ZeroForwardTensors()
+	void ZeroForward()
 	{
 		for (TensorNode* node : nodes)
 			node->ZeroForward();
+	}
+
+	void ZeroBackward()
+	{
+		for (TensorNode* node : nodes)
+			node->ZeroBackward();
 	}
 
 	void Forward()
 	{
 		for (Operation* operation : operations)
 			operation->Forward();
+	}
+
+	void Backward()
+	{
+		for (auto it = operations.rbegin(); it != operations.rend(); ++it)
+			(*it)->Backward();
+	}
+
+	void Update(const float* learningRate)
+	{
+		for (Operation* operation : operations)
+			operation->Update(learningRate);
 	}
 };

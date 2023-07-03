@@ -19,4 +19,13 @@ struct ReluOperation : Operation
 	{
 		cpuReluForward(input->size, &ONEF, input->forwardTensor, &ONEF, output->forwardTensor);
 	}
+
+	void Backward() override
+	{
+		cpuReluBackward(input->size, &ONEF, output->backwardTensor, input->forwardTensor, &ONEF, input->backwardTensor);
+	}
+
+	void Update(const float* learningRate) override
+	{
+	}
 };

@@ -19,4 +19,13 @@ struct AddOperation : Operation
 	{
 		cpuSaxpy(input->size, &ONEF, input->forwardTensor, 1, output->forwardTensor, 1);
 	}
+
+	void Backward() override
+	{
+		cpuSaxpy(input->size, &ONEF, output->backwardTensor, 1, input->backwardTensor, 1);
+	}
+
+	void Update(const float* learningRate) override
+	{
+	}
 };

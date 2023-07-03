@@ -133,6 +133,7 @@
     <ClInclude Include="AddBiasOperation.h" />
     <ClInclude Include="AddOperation.h" />
     <ClInclude Include="Header.h" />
+    <ClInclude Include="MultiplyWeightOperation.h" />
     <ClInclude Include="NeuralNetwork.h" />
     <ClInclude Include="Operation.h" />
     <ClInclude Include="ReluOperation.h" />

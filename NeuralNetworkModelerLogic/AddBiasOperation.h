@@ -8,26 +8,27 @@ struct AddBiasOperation : Operation
 	int incx;
 	int incy;
 	TensorNode* input;
-	float* bias;
+	TensorNode* bias;
 
 	AddBiasOperation(TensorNode* input, int size = 0, const float* alpha = &ONEF, int incx = 1, int incy = 1)
 		: input(input), size(size), alpha(alpha), incx(incx), incy(incy)
 	{
 		if (size == 0)
 			this->size = input->size;
-		bias = new float[input->size];
-		//memset(bias, 0, sizeof(float) * input->size);
-		for (int i = 0; i < input->size; i++)
-			bias[i] = 1.0f;
+		bias = new TensorNode(this->size);
+		bias->ZeroForwardTensor();
+		for (int i = 0; i < this->size; i++)
+			bias->forwardTensor[i] = 1;
+		bias->ZeroBackwardTensor();
 	}
 
 	~AddBiasOperation()
 	{
-		delete[] bias;
+		delete bias;
 	}
 
 	void Forward() override
 	{
-		cpuSaxpy(size, alpha, bias, incx, input->forwardTensor, incy);
+		cpuSaxpy(size, alpha, bias->forwardTensor, incx, input->forwardTensor, incy);
 	}
 };

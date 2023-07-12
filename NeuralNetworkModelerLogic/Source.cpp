@@ -6,11 +6,17 @@
 #include "NeuralNetwork.h"
 
 /*
+IMPORTANT LESSONS:
+- increasing batch size is a good way to "speed" up training when increasing or decreasing learning rate doesn't work
+- where you place your biases matters, there are dynamics that are not to intuitive going on during backprop
+*/
+
+/*
 TODO:
+- add layer norm
+- add adam optimizer
 - test other architectures
 - try other initialization methods
-- add layer norm
-- understand layernorm / test with new addition backprop for stability
 */
 
 int main()
@@ -18,7 +24,7 @@ int main()
 	srand(time(NULL));
 	
 	const float LEARNING_RATE = 0.006f;
-	const int BATCH_SIZE = 32;
+	const int BATCH_SIZE = 64;
 	const int EPISODES = 100000;
 	const int LOG_LENGTH = 56;
 	const int EPISODES_PER_PRINT = EPISODES / LOG_LENGTH;
@@ -52,8 +58,8 @@ int main()
 	TensorNode* product1 = network.AddTensorNode(new TensorNode("product1", 32));
 	TensorNode* activation1 = network.AddTensorNode(new TensorNode("activation1", 32));
 	
-	TensorNode* product2 = network.AddTensorNode(new TensorNode("product2", 16));
-	TensorNode* activation2 = network.AddTensorNode(new TensorNode("activation2", 16));
+	TensorNode* product2 = network.AddTensorNode(new TensorNode("product2", 32));
+	TensorNode* activation2 = network.AddTensorNode(new TensorNode("activation2", 32));
 
 	TensorNode* product3 = network.AddTensorNode(new TensorNode("product3", 16));
 	TensorNode* activation3 = network.AddTensorNode(new TensorNode("activation3", 16));
@@ -86,19 +92,22 @@ int main()
 	network.AddOperation(new MultiplyWeightOperation(gelu4, product8));
 	
 	network.AddOperation(new MultiplyWeightOperation(product8, output));*/
+	
+	//network.AddOperation(new AddBiasOperation(product1));
 
 	network.AddOperation(new MultiplyWeightOperation(input, product1));
+	network.AddOperation(new AddBiasOperation(product1));
 	network.AddOperation(new ReluOperation(product1, activation1));
 	network.AddOperation(new AddBiasOperation(activation1));
 	
 	network.AddOperation(new MultiplyWeightOperation(activation1, product2));
 	network.AddOperation(new ReluOperation(product2, activation2));
 	network.AddOperation(new AddBiasOperation(activation2));
-
+	
 	network.AddOperation(new MultiplyWeightOperation(activation2, product3));
 	network.AddOperation(new ReluOperation(product3, activation3));
 	network.AddOperation(new AddBiasOperation(activation3));
-
+	
 	network.AddOperation(new MultiplyWeightOperation(activation3, product4));
 	network.AddOperation(new ReluOperation(product4, activation4));
 	network.AddOperation(new AddBiasOperation(activation4));
@@ -144,9 +153,9 @@ int main()
 	printf("\n");
 
 	network.PrintForward();
-	printf("\n");
+	printf("\n");*/
 
-	network.PrintBackward();*/
+	network.PrintBackward();
 
 	return 0;
 }

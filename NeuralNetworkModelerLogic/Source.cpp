@@ -11,15 +11,17 @@ Warnings:
 
 /*
 TODO:
+- see if weights and bias can be 0
+- use addition objective
 - add layer norm
-- add the operation type in the label
+- understand layernorm / test with new addition backprop for stability
 */
 
 int main()
 {
 	srand(time(NULL));
 	
-	const float LEARNING_RATE = 0.003f;
+	const float LEARNING_RATE = 0.004f;
 	const int BATCH_SIZE = 8;
 	const int EPISODES = 200;
 
@@ -29,12 +31,12 @@ int main()
 
 	TensorNode* input = network.AddTensorNode(new TensorNode("input", 8));
 
-	TensorNode* product1 = network.AddTensorNode(new TensorNode("product1", 8));
-	TensorNode* gelu1 = network.AddTensorNode(new TensorNode("gelu1", 8));
+	TensorNode* product1 = network.AddTensorNode(new TensorNode("product1", 16));
+	TensorNode* gelu1 = network.AddTensorNode(new TensorNode("gelu1", 16));
 	TensorNode* product2 = network.AddTensorNode(new TensorNode("product2", 8));
 
-	TensorNode* product3 = network.AddTensorNode(new TensorNode("product3", 8));
-	TensorNode* gelu2 = network.AddTensorNode(new TensorNode("gelu2", 8));
+	TensorNode* product3 = network.AddTensorNode(new TensorNode("product3", 16));
+	TensorNode* gelu2 = network.AddTensorNode(new TensorNode("gelu2", 16));
 	TensorNode* product4 = network.AddTensorNode(new TensorNode("product3", 8));
 
 	TensorNode* output = network.AddTensorNode(new TensorNode("product5", 8));

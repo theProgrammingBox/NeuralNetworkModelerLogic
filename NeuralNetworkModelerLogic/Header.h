@@ -10,6 +10,18 @@ float InvSqrt(float number)
 	return tmp * 0.703952253f * (2.38924456f - number * tmp * tmp);
 }
 
+void PrintMatrixf32(float* arr, uint32_t width, uint32_t height, const char* label)
+{
+	printf("%s:\n", label);
+	for (uint32_t i = 0; i < height; i++)
+	{
+		for (uint32_t j = 0; j < width; j++)
+			printf("%6.3f ", arr[i * width + j]);
+		printf("\n");
+	}
+	printf("\n");
+}
+
 const float ONEF = 1.0f;
 const float ZEROF = 0.0f;
 
@@ -47,18 +59,6 @@ void cpuSaxpy(
 {
 	for (int i = 0; i < n; i++)
 		y[i * incy] = *alpha * x[i * incx] + y[i * incy];
-}
-
-void PrintMatrixf32(float* arr, uint32_t width, uint32_t height, const char* label)
-{
-	printf("%s:\n", label);
-	for (uint32_t i = 0; i < height; i++)
-	{
-		for (uint32_t j = 0; j < width; j++)
-			printf("%8.3f ", arr[i * width + j]);
-		printf("\n");
-	}
-	printf("\n");
 }
 
 void cpuReluForward(

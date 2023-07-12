@@ -63,7 +63,7 @@ int main()
 
 	TensorNode* product3 = network.AddTensorNode(new TensorNode("product3", 16));
 	TensorNode* activation3 = network.AddTensorNode(new TensorNode("activation3", 16));
-	
+
 	TensorNode* output = network.AddTensorNode(new TensorNode("output", 8));
 
 	/*network.AddOperation(new MultiplyWeightOperation(input, product1));

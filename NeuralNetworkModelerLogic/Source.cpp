@@ -6,12 +6,8 @@
 #include "NeuralNetwork.h"
 
 /*
-Warnings:
-*/
-
-/*
 TODO:
-- test other ar
+- test other architectures
 - try other initialization methods
 - add layer norm
 - understand layernorm / test with new addition backprop for stability
@@ -21,11 +17,11 @@ int main()
 {
 	srand(time(NULL));
 	
-	const float LEARNING_RATE = 0.01f;
+	const float LEARNING_RATE = 0.006f;
 	const int BATCH_SIZE = 32;
-	const int EPISODES = 20000;
-	const int SCREEN_WIDTH = 64;
-	const int EPISODES_PER_PRINT = EPISODES / SCREEN_WIDTH;
+	const int EPISODES = 100000;
+	const int LOG_LENGTH = 56;
+	const int EPISODES_PER_PRINT = EPISODES / LOG_LENGTH;
 	
 	float UPDATE_RATE = LEARNING_RATE * InvSqrt(BATCH_SIZE);
 
@@ -52,10 +48,19 @@ int main()
 	TensorNode* output = network.AddTensorNode(new TensorNode("output", 8));*/
 
 	TensorNode* input = network.AddTensorNode(new TensorNode("input", 16));
+	
 	TensorNode* product1 = network.AddTensorNode(new TensorNode("product1", 32));
 	TensorNode* activation1 = network.AddTensorNode(new TensorNode("activation1", 32));
+	
 	TensorNode* product2 = network.AddTensorNode(new TensorNode("product2", 16));
 	TensorNode* activation2 = network.AddTensorNode(new TensorNode("activation2", 16));
+
+	TensorNode* product3 = network.AddTensorNode(new TensorNode("product3", 16));
+	TensorNode* activation3 = network.AddTensorNode(new TensorNode("activation3", 16));
+
+	TensorNode* product4 = network.AddTensorNode(new TensorNode("product4", 16));
+	TensorNode* activation4 = network.AddTensorNode(new TensorNode("activation4", 16));
+	
 	TensorNode* output = network.AddTensorNode(new TensorNode("output", 8));
 
 	/*network.AddOperation(new MultiplyWeightOperation(input, product1));
@@ -83,12 +88,22 @@ int main()
 	network.AddOperation(new MultiplyWeightOperation(product8, output));*/
 
 	network.AddOperation(new MultiplyWeightOperation(input, product1));
-	network.AddOperation(new AddBiasOperation(product1));
 	network.AddOperation(new ReluOperation(product1, activation1));
+	network.AddOperation(new AddBiasOperation(activation1));
+	
 	network.AddOperation(new MultiplyWeightOperation(activation1, product2));
-	network.AddOperation(new AddBiasOperation(product2));
 	network.AddOperation(new ReluOperation(product2, activation2));
-	network.AddOperation(new MultiplyWeightOperation(activation2, output));
+	network.AddOperation(new AddBiasOperation(activation2));
+
+	network.AddOperation(new MultiplyWeightOperation(activation2, product3));
+	network.AddOperation(new ReluOperation(product3, activation3));
+	network.AddOperation(new AddBiasOperation(activation3));
+
+	network.AddOperation(new MultiplyWeightOperation(activation3, product4));
+	network.AddOperation(new ReluOperation(product4, activation4));
+	network.AddOperation(new AddBiasOperation(activation4));
+	
+	network.AddOperation(new MultiplyWeightOperation(activation4, output));
 
 	float errorSum = 0;
 	for (int episode = 0; episode < EPISODES; episode++)
@@ -129,9 +144,9 @@ int main()
 	printf("\n");
 
 	network.PrintForward();
-	printf("\n");*/
+	printf("\n");
 
-	network.PrintBackward();
+	network.PrintBackward();*/
 
 	return 0;
 }

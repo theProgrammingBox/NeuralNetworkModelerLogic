@@ -11,7 +11,7 @@ Warnings:
 
 /*
 TODO:
-- test other architectures
+- test other ar
 - try other initialization methods
 - add layer norm
 - understand layernorm / test with new addition backprop for stability
@@ -23,7 +23,7 @@ int main()
 	
 	const float LEARNING_RATE = 0.01f;
 	const int BATCH_SIZE = 32;
-	const int EPISODES = 10000;
+	const int EPISODES = 20000;
 	const int SCREEN_WIDTH = 64;
 	const int EPISODES_PER_PRINT = EPISODES / SCREEN_WIDTH;
 	
@@ -45,6 +45,10 @@ int main()
 	TensorNode* gelu3 = network.AddTensorNode(new TensorNode("gelu3", 32));
 	TensorNode* product6 = network.AddTensorNode(new TensorNode("product6", 16));
 
+	TensorNode* product7 = network.AddTensorNode(new TensorNode("product7", 32));
+	TensorNode* gelu4 = network.AddTensorNode(new TensorNode("gelu4", 32));
+	TensorNode* product8 = network.AddTensorNode(new TensorNode("product8", 16));
+
 	TensorNode* output = network.AddTensorNode(new TensorNode("output", 8));
 
 	network.AddOperation(new MultiplyWeightOperation(input, product1));
@@ -63,13 +67,17 @@ int main()
 	network.AddOperation(new AddBiasOperation(product5));
 	network.AddOperation(new GeluOperation(product5, gelu3));
 	network.AddOperation(new MultiplyWeightOperation(gelu3, product6));
+
+	network.AddOperation(new MultiplyWeightOperation(product6, product7));
+	network.AddOperation(new AddBiasOperation(product7));
+	network.AddOperation(new GeluOperation(product7, gelu4));
+	network.AddOperation(new MultiplyWeightOperation(gelu4, product8));
 	
-	network.AddOperation(new MultiplyWeightOperation(product6, output));
+	network.AddOperation(new MultiplyWeightOperation(product8, output));
 
 	float errorSum = 0;
 	for (int episode = 0; episode < EPISODES; episode++)
 	{
-		float error = 0;
 		for (int batch = 0; batch < BATCH_SIZE; batch++)
 		{
 			uint8_t a = rand();
@@ -88,17 +96,16 @@ int main()
 			for (int i = 0; i < 8; i++)
 			{
 				output->backwardTensor[i] = ((c >> i) & 1) - output->forwardTensor[i];
-				error += output->backwardTensor[i] * output->backwardTensor[i];
+				errorSum += abs(output->backwardTensor[i]);
 			}
 
 			network.Backward();
 		}
 		network.Update(&UPDATE_RATE);
 		
-		errorSum += error / (BATCH_SIZE * 8);
-		if (episode % EPISODES_PER_PRINT == 0)
+		if ((episode + 1) % EPISODES_PER_PRINT == 0)
 		{
-			printf("%f\n", errorSum / EPISODES_PER_PRINT);
+			printf("%f\n", errorSum / (BATCH_SIZE * 8 * EPISODES_PER_PRINT));
 			errorSum = 0;
 		}
 	}

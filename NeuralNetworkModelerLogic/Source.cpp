@@ -31,7 +31,7 @@ int main()
 
 	NeuralNetwork network;
 
-	TensorNode* input = network.AddTensorNode(new TensorNode("input", 16));
+	/*TensorNode* input = network.AddTensorNode(new TensorNode("input", 16));
 
 	TensorNode* product1 = network.AddTensorNode(new TensorNode("product1", 32));
 	TensorNode* gelu1 = network.AddTensorNode(new TensorNode("gelu1", 32));
@@ -49,9 +49,16 @@ int main()
 	TensorNode* gelu4 = network.AddTensorNode(new TensorNode("gelu4", 32));
 	TensorNode* product8 = network.AddTensorNode(new TensorNode("product8", 16));
 
+	TensorNode* output = network.AddTensorNode(new TensorNode("output", 8));*/
+
+	TensorNode* input = network.AddTensorNode(new TensorNode("input", 16));
+	TensorNode* product1 = network.AddTensorNode(new TensorNode("product1", 32));
+	TensorNode* activation1 = network.AddTensorNode(new TensorNode("activation1", 32));
+	TensorNode* product2 = network.AddTensorNode(new TensorNode("product2", 16));
+	TensorNode* activation2 = network.AddTensorNode(new TensorNode("activation2", 16));
 	TensorNode* output = network.AddTensorNode(new TensorNode("output", 8));
 
-	network.AddOperation(new MultiplyWeightOperation(input, product1));
+	/*network.AddOperation(new MultiplyWeightOperation(input, product1));
 	network.AddOperation(new AddBiasOperation(product1));
 	network.AddOperation(new GeluOperation(product1, gelu1));
 	network.AddOperation(new MultiplyWeightOperation(gelu1, product2));
@@ -73,7 +80,15 @@ int main()
 	network.AddOperation(new GeluOperation(product7, gelu4));
 	network.AddOperation(new MultiplyWeightOperation(gelu4, product8));
 	
-	network.AddOperation(new MultiplyWeightOperation(product8, output));
+	network.AddOperation(new MultiplyWeightOperation(product8, output));*/
+
+	network.AddOperation(new MultiplyWeightOperation(input, product1));
+	network.AddOperation(new AddBiasOperation(product1));
+	network.AddOperation(new ReluOperation(product1, activation1));
+	network.AddOperation(new MultiplyWeightOperation(activation1, product2));
+	network.AddOperation(new AddBiasOperation(product2));
+	network.AddOperation(new ReluOperation(product2, activation2));
+	network.AddOperation(new MultiplyWeightOperation(activation2, output));
 
 	float errorSum = 0;
 	for (int episode = 0; episode < EPISODES; episode++)

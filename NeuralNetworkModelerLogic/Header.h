@@ -3,6 +3,13 @@
 #include <vector>
 #include <cassert>
 
+float InvSqrt(float number)
+{
+	long i = 0x5F1FFFF9 - (*(long*)&number >> 1);
+	float tmp = *(float*)&i;
+	return tmp * 0.703952253f * (2.38924456f - number * tmp * tmp);
+}
+
 const float ONEF = 1.0f;
 const float ZEROF = 0.0f;
 

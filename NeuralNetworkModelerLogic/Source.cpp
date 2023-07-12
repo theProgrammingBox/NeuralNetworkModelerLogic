@@ -11,8 +11,8 @@ Warnings:
 
 /*
 TODO:
-- see if weights and bias can be 0
-- use addition objective
+- visulize performance
+- try other initialization methods
 - add layer norm
 - understand layernorm / test with new addition backprop for stability
 */
@@ -21,23 +21,23 @@ int main()
 {
 	srand(time(NULL));
 	
-	const float LEARNING_RATE = 0.004f;
-	const int BATCH_SIZE = 8;
-	const int EPISODES = 200;
+	const float LEARNING_RATE = 0.01f;
+	const int BATCH_SIZE = 32;
+	const int EPISODES = 10000;
 
 	float UPDATE_RATE = LEARNING_RATE * InvSqrt(BATCH_SIZE);
 
 	NeuralNetwork network;
 
-	TensorNode* input = network.AddTensorNode(new TensorNode("input", 8));
+	TensorNode* input = network.AddTensorNode(new TensorNode("input", 16));
 
-	TensorNode* product1 = network.AddTensorNode(new TensorNode("product1", 16));
-	TensorNode* gelu1 = network.AddTensorNode(new TensorNode("gelu1", 16));
-	TensorNode* product2 = network.AddTensorNode(new TensorNode("product2", 8));
+	TensorNode* product1 = network.AddTensorNode(new TensorNode("product1", 32));
+	TensorNode* gelu1 = network.AddTensorNode(new TensorNode("gelu1", 32));
+	TensorNode* product2 = network.AddTensorNode(new TensorNode("product2", 16));
 
-	TensorNode* product3 = network.AddTensorNode(new TensorNode("product3", 16));
-	TensorNode* gelu2 = network.AddTensorNode(new TensorNode("gelu2", 16));
-	TensorNode* product4 = network.AddTensorNode(new TensorNode("product3", 8));
+	TensorNode* product3 = network.AddTensorNode(new TensorNode("product3", 32));
+	TensorNode* gelu2 = network.AddTensorNode(new TensorNode("gelu2", 32));
+	TensorNode* product4 = network.AddTensorNode(new TensorNode("product3", 16));
 
 	TensorNode* output = network.AddTensorNode(new TensorNode("product5", 8));
 
@@ -60,29 +60,33 @@ int main()
 		for (int batch = 0; batch < BATCH_SIZE; batch++)
 		{
 			uint8_t a = rand();
+			uint8_t b = rand();
+			uint8_t c = a + b;
 			
 			network.ZeroForward();
 			for (int i = 0; i < 8; i++)
-				input->forwardTensor[i] = a >> i & 1;
+				input->forwardTensor[i] = (a >> i) & 1;
+			for (int i = 0; i < 8; i++)
+				input->forwardTensor[i + 8] = (b >> i) & 1;
 
 			network.Forward();
 
 			network.ZeroBackward();
 			for (int i = 0; i < 8; i++)
-				output->backwardTensor[i] = input->forwardTensor[i] - output->forwardTensor[i];
+				output->backwardTensor[i] = ((c >> i) & 1) - output->forwardTensor[i];
 
 			network.Backward();
 		}
 		network.Update(&UPDATE_RATE);
 	}
 
+	network.PrintParam();
+	printf("\n");
+
 	network.PrintForward();
 	printf("\n");
 
 	network.PrintBackward();
-	printf("\n");
-
-	network.PrintParam();
 
 	return 0;
 }

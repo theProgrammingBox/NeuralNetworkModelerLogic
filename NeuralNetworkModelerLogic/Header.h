@@ -22,6 +22,11 @@ void PrintMatrixf32(float* arr, uint32_t width, uint32_t height, const char* lab
 	printf("\n");
 }
 
+float RandomFloat()
+{
+	return rand() / (float)RAND_MAX;
+}
+
 const float ONEF = 1.0f;
 const float ZEROF = 0.0f;
 

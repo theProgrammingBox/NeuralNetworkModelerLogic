@@ -18,7 +18,7 @@ struct MultiplyWeightOperation : Operation
 		weight = new TensorNode("weight", output->width, input->width);
 		weight->ZeroForward();
 		for (int i = 0; i < std::min(input->width, output->width); i++)
-			weight->forwardTensor[i * input->width + i] = 1.0f;
+			weight->forwardTensor[i * output->width + i] = 1.0f;
 		weight->ZeroBackward();
 	}
 

@@ -55,8 +55,8 @@ int main()
 
 	TensorNode* input = network.AddTensorNode(new TensorNode("input", 16));
 	
-	TensorNode* product1 = network.AddTensorNode(new TensorNode("product1", 32));
-	TensorNode* activation1 = network.AddTensorNode(new TensorNode("activation1", 32));
+	TensorNode* product1 = network.AddTensorNode(new TensorNode("product1", 16));
+	TensorNode* activation1 = network.AddTensorNode(new TensorNode("activation1", 16));
 	
 	TensorNode* product2 = network.AddTensorNode(new TensorNode("product2", 16));
 	TensorNode* activation2 = network.AddTensorNode(new TensorNode("activation2", 16));
@@ -142,13 +142,13 @@ int main()
 		}
 	}
 
-	/*network.PrintParam();
+	network.PrintParam();
 	printf("\n");
 
 	network.PrintForward();
-	printf("\n");*/
+	printf("\n");
 
-	network.PrintBackward();
+	network.PrintBackward();/**/
 
 	return 0;
 }

@@ -134,6 +134,7 @@
     <ClInclude Include="AddOperation.h" />
     <ClInclude Include="GeluOperation.h" />
     <ClInclude Include="Header.h" />
+    <ClInclude Include="LayerNormOperation.h" />
     <ClInclude Include="MultiplyWeightOperation.h" />
     <ClInclude Include="NeuralNetwork.h" />
     <ClInclude Include="Operation.h" />

@@ -4,16 +4,19 @@
 struct LayerNormOperation : Operation
 {
 	TensorNode* input;
-	float negInvSize;
+	TensorNode* output;
+	float invSize;
+	float sqrtSize;
 	float mean;
-	float variance;
+	float invStd;
 
-	LayerNormOperation(TensorNode* input)
-		: input(input)
+	LayerNormOperation(TensorNode* input, TensorNode* output)
+		: input(input), output(output)
 	{
 		assert(input != nullptr);
 
-		negInvSize = -1.0f / input->size;
+		invSize = 1.0f / input->size;
+		sqrtSize = sqrtf(input->size);
 	}
 
 	~LayerNormOperation()
@@ -23,24 +26,38 @@ struct LayerNormOperation : Operation
 	void Forward() override
 	{
 		mean = 0.0f;
-		variance = 0.0f;
 		for (int i = 0; i < input->size; i++)
 			mean += input->forwardTensor[i];
-		mean *= negInvSize;
+		mean *= invSize;
 		
+		invStd = 0.0f;
+		float x;
 		for (int i = 0; i < input->size; i++)
 		{
-			float x = input->forwardTensor[i] + mean;
-			variance += x * x;
+			x = input->forwardTensor[i] - mean;
+			invStd += x * x;
 		}
-		variance = InvSqrt(variance + 1e-16f);
+		invStd = InvSqrt(invStd + 1e-16f) * sqrtSize;
 
 		for (int i = 0; i < input->size; i++)
-			input->forwardTensor[i] = (input->forwardTensor[i] + mean) * variance;
+			output->forwardTensor[i] = (input->forwardTensor[i] - mean) * invStd;
 	}
 
 	void Backward() override
 	{
+		float dMean = 0.0f;
+		float dInvStd = 0.0f;
+		
+		for (int i = 0; i < input->size; i++)
+		{
+			dMean += output->backwardTensor[i];
+			dInvStd += output->backwardTensor[i] * output->forwardTensor[i];
+		}
+		dMean *= -invStd * invSize;
+		dInvStd *= -invStd * invStd * invSize;
+		
+		for (int i = 0; i < input->size; i++)
+			input->backwardTensor[i] = output->backwardTensor[i] * invStd + dMean + dInvStd * (input->forwardTensor[i] - mean);
 	}
 
 	void Update(const float* learningRate) override

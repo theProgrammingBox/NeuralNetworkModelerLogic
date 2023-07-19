@@ -7,10 +7,16 @@
 #include "NeuralNetwork.h"
 
 /*
+UNCERTAIN BUGS:
+- random nans sometimes when near the end
+*/
+
+/*
 IMPORTANT LESSONS:
 - increasing batch size is a good way to "speed" up training when increasing or decreasing learning rate doesn't work
 - where you place your biases matters, there are dynamics that are not to intuitive going on during backprop
 - layer norm does not replace an activation function, it is a normalization technique
+- the scale and purpose of the model decides the usefulness of different operations
 */
 
 /*
@@ -26,8 +32,8 @@ int main()
 	
 	const float LEARNING_RATE = 0.006f;
 	const int BATCH_SIZE = 64;
-	const int EPISODES = 100000;
-	const int LOG_LENGTH = 56;
+	const int EPISODES = 1000000;
+	const int LOG_LENGTH = 128;
 	const int EPISODES_PER_PRINT = EPISODES / LOG_LENGTH;
 	
 	float UPDATE_RATE = LEARNING_RATE * InvSqrt(BATCH_SIZE);
@@ -45,6 +51,12 @@ int main()
 	TensorNode* product3 = network.AddTensorNode(new TensorNode("product3", 16));
 	TensorNode* activation3 = network.AddTensorNode(new TensorNode("activation3", 16));
 
+	TensorNode* product4 = network.AddTensorNode(new TensorNode("product3", 16));
+	TensorNode* activation4 = network.AddTensorNode(new TensorNode("activation3", 16));
+
+	TensorNode* product5 = network.AddTensorNode(new TensorNode("product3", 16));
+	TensorNode* activation5 = network.AddTensorNode(new TensorNode("activation3", 16));
+
 	TensorNode* output = network.AddTensorNode(new TensorNode("output", 8));
 
 	network.AddOperation(new MultiplyWeightOperation(input, product1));
@@ -59,8 +71,16 @@ int main()
 	network.AddOperation(new MultiplyWeightOperation(activation2, product3));
 	network.AddOperation(new GeluOperation(product3, activation3));
 	network.AddOperation(new AddBiasOperation(activation3));
+
+	network.AddOperation(new MultiplyWeightOperation(activation3, product4));
+	network.AddOperation(new GeluOperation(product4, activation4));
+	network.AddOperation(new AddBiasOperation(activation4));
+
+	network.AddOperation(new MultiplyWeightOperation(activation4, product5));
+	network.AddOperation(new GeluOperation(product5, activation5));
+	network.AddOperation(new AddBiasOperation(activation5));
 	
-	network.AddOperation(new MultiplyWeightOperation(activation3, output));
+	network.AddOperation(new MultiplyWeightOperation(activation5, output));
 
 	float errorSum = 0;
 	for (int episode = 0; episode < EPISODES; episode++)

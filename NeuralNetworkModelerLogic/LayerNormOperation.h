@@ -14,6 +14,9 @@ struct LayerNormOperation : Operation
 		: input(input), output(output)
 	{
 		assert(input != nullptr);
+		assert(output != nullptr);
+		assert(input != output);
+		assert(input->size == output->size);
 
 		invSize = 1.0f / input->size;
 		sqrtSize = sqrtf(input->size);

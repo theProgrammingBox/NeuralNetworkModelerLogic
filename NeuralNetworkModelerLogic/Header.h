@@ -120,3 +120,33 @@ void cpuGeluBackward(
 		dx[i] = *beta * dx[i] + *alpha * geluGrad * dy[i];
 	}
 }
+
+void cpuSigmoidForward(
+	int n,
+	const float* alpha,
+	const float* x,
+	const float* beta,
+	float* y)
+{
+	for (int i = 0; i < n; i++)
+	{
+		float sigmoid = 1 / (1 + exp(-x[i]));
+		y[i] = *beta * y[i] + *alpha * sigmoid;
+	}
+}
+
+void cpuSigmoidBackward(
+	int n,
+	const float* alpha,
+	const float* dy,
+	const float* x,
+	const float* beta,
+	float* dx)
+{
+	for (int i = 0; i < n; i++)
+	{
+		float sigmoid = 1 / (1 + exp(-x[i]));
+		float sigmoidGrad = sigmoid * (1 - sigmoid);
+		dx[i] = *beta * dx[i] + *alpha * sigmoidGrad * dy[i];
+	}
+}

@@ -15,6 +15,10 @@ struct ReluOperation : Operation
 		assert(input->size == output->size);
 	}
 
+	~ReluOperation()
+	{
+	}
+
 	void Forward() override
 	{
 		cpuReluForward(input->size, &ONEF, input->forwardTensor, &ONEF, output->forwardTensor);

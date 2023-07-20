@@ -16,9 +16,11 @@ struct MultiplyWeightOperation : Operation
 		assert(input->height == output->height);
 		
 		weight = new TensorNode("weight", output->width, input->width);
-		weight->ZeroForward();
+		/*weight->ZeroForward();
 		for (int i = 0; i < std::min(input->width, output->width); i++)
-			weight->forwardTensor[i * output->width + i] = 1.0f;
+			weight->forwardTensor[i * output->width + i] = 1.0f;*/
+		for (int i = 0; i < weight->size; i++)
+			weight->forwardTensor[i] = RandomFloat() - 0.5f;
 		weight->ZeroBackward();
 	}
 

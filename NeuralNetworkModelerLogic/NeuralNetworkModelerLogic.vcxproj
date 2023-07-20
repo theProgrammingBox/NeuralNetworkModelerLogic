@@ -139,6 +139,7 @@
     <ClInclude Include="NeuralNetwork.h" />
     <ClInclude Include="Operation.h" />
     <ClInclude Include="ReluOperation.h" />
+    <ClInclude Include="SigmoidOperation.h" />
     <ClInclude Include="TensorNode.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

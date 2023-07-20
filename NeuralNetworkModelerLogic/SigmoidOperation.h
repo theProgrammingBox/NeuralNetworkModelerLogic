@@ -1,12 +1,12 @@
 #pragma once
 #include "Operation.h"
 
-struct AddOperation : Operation
+struct SigmoidOperation : Operation
 {
 	TensorNode* input;
 	TensorNode* output;
 
-	AddOperation(TensorNode* input, TensorNode* output)
+	SigmoidOperation(TensorNode* input, TensorNode* output)
 		: input(input), output(output)
 	{
 		assert(input != nullptr);
@@ -15,24 +15,24 @@ struct AddOperation : Operation
 		assert(input->size == output->size);
 	}
 
-	~AddOperation()
+	~SigmoidOperation()
 	{
 	}
 
 	void Forward() override
 	{
-		cpuSaxpy(input->size, &ONEF, input->forwardTensor, 1, output->forwardTensor, 1);
+		cpuSigmoidForward(input->size, &ONEF, input->forwardTensor, &ONEF, output->forwardTensor);
 	}
 
 	void Backward() override
 	{
-		cpuSaxpy(input->size, &ONEF, output->backwardTensor, 1, input->backwardTensor, 1);
+		cpuSigmoidBackward(input->size, &ONEF, output->backwardTensor, input->forwardTensor, &ONEF, input->backwardTensor);
 	}
 
 	void Update(const float* learningRate) override
 	{
 	}
-	
+
 	void PrintParam() const override
 	{
 	}

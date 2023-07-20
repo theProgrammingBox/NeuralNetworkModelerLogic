@@ -4,6 +4,7 @@
 #include "AddBiasOperation.h"
 #include "MultiplyWeightOperation.h"
 #include "LayerNormOperation.h"
+#include "SigmoidOperation.h"
 #include "NeuralNetwork.h"
 
 /*
@@ -21,6 +22,10 @@ IMPORTANT LESSONS:
 
 /*
 TODO:
+- implement relative rl
+	- add concat
+	- seperate action from hidden mem for cleaner code
+	- add batch into the height of the matrix for speed up
 - add adam optimizer
 - test other architectures (like residual using layer norm)
 - try other initialization methods
@@ -30,86 +35,138 @@ int main()
 {
 	srand(time(NULL));
 	
-	const float LEARNING_RATE = 0.006f;
-	const int BATCH_SIZE = 64;
-	const int EPISODES = 1000000;
-	const int LOG_LENGTH = 128;
+	const float LEARNING_RATE = 0.01f;
+	const int BATCH_SIZE = 1;
+	const int EPISODES = 1;
+	const int LOG_LENGTH = 1;
 	const int EPISODES_PER_PRINT = EPISODES / LOG_LENGTH;
+	const int PLAYERS = 2;
+	const int ACTIONS = 3;
 	
 	float UPDATE_RATE = LEARNING_RATE * InvSqrt(BATCH_SIZE);
 
-	NeuralNetwork network;
+	NeuralNetwork policyNetwork;
 
-	TensorNode* input = network.AddTensorNode(new TensorNode("input", 16));
-	
-	TensorNode* product1 = network.AddTensorNode(new TensorNode("product1", 16));
-	TensorNode* activation1 = network.AddTensorNode(new TensorNode("activation1", 16));
-	
-	TensorNode* product2 = network.AddTensorNode(new TensorNode("product2", 16));
-	TensorNode* activation2 = network.AddTensorNode(new TensorNode("activation2", 16));
+	TensorNode* policyInput = policyNetwork.AddTensorNode(new TensorNode("policyInput", 2, PLAYERS));
 
-	TensorNode* product3 = network.AddTensorNode(new TensorNode("product3", 16));
-	TensorNode* activation3 = network.AddTensorNode(new TensorNode("activation3", 16));
-
-	TensorNode* output = network.AddTensorNode(new TensorNode("output", 8));
-
-	network.AddOperation(new MultiplyWeightOperation(input, product1));
-	network.AddOperation(new AddBiasOperation(product1));
-	network.AddOperation(new ReluOperation(product1, activation1));
-	network.AddOperation(new AddBiasOperation(activation1));
+	TensorNode* policyProduct1 = policyNetwork.AddTensorNode(new TensorNode("policyProduct1", 4, PLAYERS));
+	TensorNode* policyActivation1 = policyNetwork.AddTensorNode(new TensorNode("policyActivation1", 4, PLAYERS));
 	
-	network.AddOperation(new MultiplyWeightOperation(activation1, product2));
-	network.AddOperation(new ReluOperation(product2, activation2));
-	network.AddOperation(new AddBiasOperation(activation2));
-	
-	network.AddOperation(new MultiplyWeightOperation(activation2, product3));
-	network.AddOperation(new ReluOperation(product3, activation3));
-	network.AddOperation(new AddBiasOperation(activation3));
-	
-	network.AddOperation(new MultiplyWeightOperation(activation3, output));
+	TensorNode* policyOutputProduct = policyNetwork.AddTensorNode(new TensorNode("policyOutputProduct", 4, PLAYERS));
+	TensorNode* policyOutputActivation = policyNetwork.AddTensorNode(new TensorNode("policyOutputActivation", 4, PLAYERS));
 
+	policyNetwork.AddOperation(new MultiplyWeightOperation(policyInput, policyProduct1));
+	policyNetwork.AddOperation(new AddBiasOperation(policyProduct1));
+	policyNetwork.AddOperation(new ReluOperation(policyProduct1, policyActivation1));
+	
+	policyNetwork.AddOperation(new AddBiasOperation(policyActivation1));
+	policyNetwork.AddOperation(new MultiplyWeightOperation(policyActivation1, policyOutputProduct));
+	policyNetwork.AddOperation(new ReluOperation(policyOutputProduct, policyOutputActivation));
+
+	
+	NeuralNetwork valueNetwork;
+
+	TensorNode* valueProduct1 = valueNetwork.AddTensorNode(new TensorNode("valueProduct1", 8, PLAYERS));
+	TensorNode* valueActivation1 = valueNetwork.AddTensorNode(new TensorNode("valueActivation1", 8, PLAYERS));
+
+	TensorNode* valueProduct2 = valueNetwork.AddTensorNode(new TensorNode("valueProduct2", 8, PLAYERS));
+	TensorNode* valueActivation2 = valueNetwork.AddTensorNode(new TensorNode("valueActivation2", 8, PLAYERS));
+
+	TensorNode* valueProduct3 = valueNetwork.AddTensorNode(new TensorNode("valueProduct3", 8, PLAYERS));
+	TensorNode* valueActivation3 = valueNetwork.AddTensorNode(new TensorNode("valueActivation3", 8, PLAYERS));
+
+	TensorNode* valueOutputProduct = valueNetwork.AddTensorNode(new TensorNode("valueOutputProduct", 1, PLAYERS));
+	TensorNode* valueOutputActivation = valueNetwork.AddTensorNode(new TensorNode("valueOutputActivation", 1, PLAYERS));
+
+	valueNetwork.AddOperation(new MultiplyWeightOperation(policyOutputActivation, valueProduct1));
+	valueNetwork.AddOperation(new AddBiasOperation(valueProduct1));
+	valueNetwork.AddOperation(new ReluOperation(valueProduct1, valueActivation1));
+	
+	valueNetwork.AddOperation(new AddBiasOperation(valueActivation1));
+	valueNetwork.AddOperation(new MultiplyWeightOperation(valueActivation1, valueProduct2));
+	valueNetwork.AddOperation(new ReluOperation(valueProduct2, valueActivation2));
+	
+	valueNetwork.AddOperation(new AddBiasOperation(valueActivation2));
+	valueNetwork.AddOperation(new MultiplyWeightOperation(valueActivation2, valueProduct3));
+	valueNetwork.AddOperation(new ReluOperation(valueProduct3, valueActivation3));
+	
+	valueNetwork.AddOperation(new AddBiasOperation(valueActivation3));
+	valueNetwork.AddOperation(new MultiplyWeightOperation(valueActivation3, valueOutputProduct));
+	valueNetwork.AddOperation(new SigmoidOperation(valueOutputProduct, valueOutputActivation));
+	
+	
 	float errorSum = 0;
 	for (int episode = 0; episode < EPISODES; episode++)
 	{
 		for (int batch = 0; batch < BATCH_SIZE; batch++)
 		{
-			uint8_t a = rand();
-			uint8_t b = rand();
-			uint8_t c = a + b;
+			policyNetwork.ZeroForward();
+			valueNetwork.ZeroForward();
 			
-			network.ZeroForward();
-			for (int i = 0; i < 8; i++)
-				input->forwardTensor[i] = (a >> i) & 1;
-			for (int i = 0; i < 8; i++)
-				input->forwardTensor[i + 8] = (b >> i) & 1;
+			for (int i = 0; i < policyInput->size; i++)
+				policyInput->forwardTensor[i] = RandomFloat();
 
-			network.Forward();
+			policyNetwork.Forward();
+			valueNetwork.Forward();
 
-			network.ZeroBackward();
+			int width = policyOutputActivation->width;
+			int actions[PLAYERS];
+			for (int player = 0; player < PLAYERS; player++)
+			{
+				float action = 0;
+				float max = policyOutputActivation->forwardTensor[player * width];
+				for (int i = 1; i < ACTIONS; i++)
+				{
+					if (policyOutputActivation->forwardTensor[player * width + i] > max)
+					{
+						max = policyOutputActivation->forwardTensor[player * width + i];
+						action = i;
+					}
+				}
+				actions[player] = action;
+			}
+
+			// print actions
+			for (int player = 0; player < PLAYERS; player++)
+				printf("%d ", actions[player]);
+			printf("\n\n");
+
+			/*network.ZeroBackward();
 			for (int i = 0; i < 8; i++)
 			{
 				output->backwardTensor[i] = ((c >> i) & 1) - output->forwardTensor[i];
 				errorSum += abs(output->backwardTensor[i]);
 			}
 
-			network.Backward();
+			network.Backward();*/
 		}
-		network.Update(&UPDATE_RATE);
+		//network.Update(&UPDATE_RATE);
 		
-		if ((episode + 1) % EPISODES_PER_PRINT == 0)
+		/*if ((episode + 1) % EPISODES_PER_PRINT == 0)
 		{
 			printf("%f\n", errorSum / (BATCH_SIZE * 8 * EPISODES_PER_PRINT));
 			errorSum = 0;
-		}
+		}*/
 	}
-
-	/*network.PrintParam();
+	
+	/*policyNetwork.PrintParam();
 	printf("\n");
-
-	network.PrintForward();
+	
+	valueNetwork.PrintParam();
+	printf("\n");*/
+	
+	
+	policyNetwork.PrintForward();
 	printf("\n");
+	
+	valueNetwork.PrintForward();
+	printf("\n");
+	
 
-	network.PrintBackward();*/
+	/*policyNetwork.PrintBackward();
+	printf("\n");
+	
+	valueNetwork.PrintBackward();*/
 
 	return 0;
 }

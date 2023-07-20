@@ -15,6 +15,10 @@ struct GeluOperation : Operation
 		assert(input->size == output->size);
 	}
 
+	~GeluOperation()
+	{
+	}
+
 	void Forward() override
 	{
 		cpuGeluForward(input->size, &ONEF, input->forwardTensor, &ONEF, output->forwardTensor);

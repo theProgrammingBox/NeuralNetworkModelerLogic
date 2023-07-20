@@ -51,36 +51,22 @@ int main()
 	TensorNode* product3 = network.AddTensorNode(new TensorNode("product3", 16));
 	TensorNode* activation3 = network.AddTensorNode(new TensorNode("activation3", 16));
 
-	TensorNode* product4 = network.AddTensorNode(new TensorNode("product3", 16));
-	TensorNode* activation4 = network.AddTensorNode(new TensorNode("activation3", 16));
-
-	TensorNode* product5 = network.AddTensorNode(new TensorNode("product3", 16));
-	TensorNode* activation5 = network.AddTensorNode(new TensorNode("activation3", 16));
-
 	TensorNode* output = network.AddTensorNode(new TensorNode("output", 8));
 
 	network.AddOperation(new MultiplyWeightOperation(input, product1));
 	network.AddOperation(new AddBiasOperation(product1));
-	network.AddOperation(new GeluOperation(product1, activation1));
+	network.AddOperation(new ReluOperation(product1, activation1));
 	network.AddOperation(new AddBiasOperation(activation1));
 	
 	network.AddOperation(new MultiplyWeightOperation(activation1, product2));
-	network.AddOperation(new GeluOperation(product2, activation2));
+	network.AddOperation(new ReluOperation(product2, activation2));
 	network.AddOperation(new AddBiasOperation(activation2));
 	
 	network.AddOperation(new MultiplyWeightOperation(activation2, product3));
-	network.AddOperation(new GeluOperation(product3, activation3));
+	network.AddOperation(new ReluOperation(product3, activation3));
 	network.AddOperation(new AddBiasOperation(activation3));
-
-	network.AddOperation(new MultiplyWeightOperation(activation3, product4));
-	network.AddOperation(new GeluOperation(product4, activation4));
-	network.AddOperation(new AddBiasOperation(activation4));
-
-	network.AddOperation(new MultiplyWeightOperation(activation4, product5));
-	network.AddOperation(new GeluOperation(product5, activation5));
-	network.AddOperation(new AddBiasOperation(activation5));
 	
-	network.AddOperation(new MultiplyWeightOperation(activation5, output));
+	network.AddOperation(new MultiplyWeightOperation(activation3, output));
 
 	float errorSum = 0;
 	for (int episode = 0; episode < EPISODES; episode++)
@@ -117,13 +103,13 @@ int main()
 		}
 	}
 
-	network.PrintParam();
+	/*network.PrintParam();
 	printf("\n");
 
 	network.PrintForward();
 	printf("\n");
 
-	network.PrintBackward();/**/
+	network.PrintBackward();*/
 
 	return 0;
 }

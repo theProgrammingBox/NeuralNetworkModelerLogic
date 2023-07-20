@@ -24,6 +24,7 @@ IMPORTANT LESSONS:
 TODO:
 - implement relative rl
 	- change everything from a sum approach to a set approach
+		- redesign with a more "compiled" approach for a more user friendly experience
 	- add concat
 	- seperate action from hidden mem for cleaner code
 	- add batch into the height of the matrix for speed up

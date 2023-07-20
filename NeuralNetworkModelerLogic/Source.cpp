@@ -8,8 +8,10 @@
 #include "NeuralNetwork.h"
 
 /*
-UNCERTAIN BUGS:
-- random nans sometimes when near the end
+PROJECT DESCRIPTION:
+- build a simple framework for very fast prototyping and testing of neural networks in c++
+- allow a high degree of freedom while being user friendly
+- not too concerned with speed, but it should be fast enough to train a model in a reasonable amount of time
 */
 
 /*
@@ -25,6 +27,9 @@ TODO:
 - implement relative rl
 	- change everything from a sum approach to a set approach
 		- redesign with a more "compiled" approach for a more user friendly experience
+		- the input determines the output parameters is none is provided
+		- give warning for things like weight mul if no output size is provided but use the input size
+		- assert otherwise
 	- add concat
 	- seperate action from hidden mem for cleaner code
 	- add batch into the height of the matrix for speed up
